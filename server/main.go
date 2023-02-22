@@ -2,7 +2,12 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/base64"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"net/http"
 	"time"
@@ -24,8 +29,50 @@ func setupConfig() *logical.InmemStorage {
 	return storage
 }
 
+func getPrivateKeys() ([]byte, []byte, error) {
+	// Generate a new private key
+	reader := rand.Reader
+	bitSize := 2048
+
+	key, err := rsa.GenerateKey(reader, bitSize)
+	if err != nil {
+		fmt.Println(err)
+		return nil, nil, err
+	}
+
+	privateKey := &pem.Block{
+		Type:  "PRIVATE KEY",
+		Bytes: x509.MarshalPKCS1PrivateKey(key),
+	}
+
+	pemDataPrivate := pem.EncodeToMemory(privateKey)
+
+	asn1Bytes, err := x509.MarshalPKIXPublicKey(&key.PublicKey)
+	if err != nil {
+		fmt.Println(err)
+		return nil, nil, err
+	}
+
+	publicKey := &pem.Block{
+		Type:  "PUBLIC KEY",
+		Bytes: asn1Bytes,
+	}
+
+	pemDataPublic := pem.EncodeToMemory(publicKey)
+
+	return pemDataPrivate, pemDataPublic, nil
+}
+
 func startServer() {
 	storage := setupConfig()
+
+	pemDataPrivate, pemDataPublic, err := getPrivateKeys()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Println("generated private and public key")
 	
 	http.HandleFunc("/v1/auth/aws/login", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("Received request: %s\n", r.URL.Path)
@@ -73,14 +120,23 @@ func startServer() {
 		} else {
 			fmt.Println("Login successful")
 
-			token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+			token := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{
 				"canonical_arn": response.Auth.InternalData["canonical_arn"],
 				"account_id": response.Auth.InternalData["account_id"],
 				"display_name": response.Auth.DisplayName,
-				"nbf": time.Date(2015, 10, 10, 12, 0, 0, 0, time.UTC).Unix(),
+				"iat": time.Now().Unix(),
+				"exp": time.Now().Add(time.Hour * 24).Unix(),
+				"nbf": time.Now().Unix(),
 			})
 
-			tokenString, _ := token.SignedString([]byte("secret"))
+			privKey, err := jwt.ParseRSAPrivateKeyFromPEM(pemDataPrivate)
+			if err != nil {
+				fmt.Print("Error parsing private key")
+				fmt.Println(err)
+				return
+			}
+
+			tokenString, _ := token.SignedString(privKey)
 
 			secret := &vault.Secret{
 				Auth: &vault.SecretAuth{
@@ -98,6 +154,44 @@ func startServer() {
 		} 
 	})
 
+	http.HandleFunc("/.well-known/jwks.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Printf("Received request: %s\n", r.URL.Path)
+
+		// Check if the request is a GET
+		if r.Method != "GET" {
+			msg := "Request method is not GET"
+			http.Error(w, msg, http.StatusMethodNotAllowed)
+			return
+		}
+
+		_, err := jwt.ParseRSAPublicKeyFromPEM(pemDataPublic)
+		if err != nil {
+			fmt.Print("Error parsing public key")
+			fmt.Printf("%s", pemDataPublic)
+			fmt.Println(err)
+			return
+		}
+		
+
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"keys": []map[string]interface{}{
+				{
+					"kty": "RSA",
+					"kid": "1", //should be the same as the kid in the token, and should be unique, therefore infer from the certificate
+					"alg": "RS256",
+					"use": "sig",
+					//"n": pubkey.N.String(), //uncomment this if you want to use the modulus and exponent
+					//"e": pubkey.E,
+					"x5c": []string{
+						base64.StdEncoding.EncodeToString(pemDataPublic),
+					},
+				},
+			},
+		})
+	})
+
+	fmt.Println("Starting server on port 8081")
 	http.ListenAndServe(":8081", nil)
 }
 

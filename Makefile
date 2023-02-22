@@ -1,4 +1,4 @@
-.PHONY: all server client
+.PHONY: all server client jwks
 
 server:
 	@echo "Starting server..."
@@ -7,3 +7,7 @@ server:
 client:
 	@echo "Execute client..."
 	@go run client/main.go
+
+jwks:
+	@echo "Fetch JWKS..."
+	@curl -s http://localhost:8081/.well-known/jwks.json | jq .
