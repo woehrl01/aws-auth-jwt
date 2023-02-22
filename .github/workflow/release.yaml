@@ -1,0 +1,36 @@
+name: Build and Publish Docker Image
+
+# on release tag
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v2
+
+      - name: Login to GHCR
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GHCR_TOKEN }}
+
+      - name: Extract Git Tag
+        id: extract_tag
+        run: echo "TAG=$(echo ${GITHUB_REF#refs/tags/})" >> $GITHUB_ENV
+
+      - name: Build and Tag Docker Image
+        run: docker build -t ghcr.io/${{ github.repository }}:${{ steps.extract_tag.outputs.TAG }} .
+
+      - name: Push Docker Image
+        run: docker push ghcr.io/${{ github.repository }}:${{ steps.extract_tag.outputs.TAG }}
