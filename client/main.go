@@ -9,11 +9,11 @@ import (
 	auth "github.com/hashicorp/vault/api/auth/aws"
 )
 
-func doLogin(){
-	config := vault.DefaultConfig() 
-	config.Address = "http://localhost:8081";
+func doLogin() {
+	config := vault.DefaultConfig()
+	config.Address = "http://localhost:8081"
 
-    client, _ := vault.NewClient(config)
+	client, _ := vault.NewClient(config)
 	awsAuth, _ := auth.NewAWSAuth(
 		auth.WithRole("generic"),
 	)

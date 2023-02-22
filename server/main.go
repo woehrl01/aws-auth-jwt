@@ -19,12 +19,41 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 )
 
+// copy from: github.com/hashicorp/vault/builtin/logical/aws/path_config_root.go
+type rootConfig struct {
+	AccessKey        string `json:"access_key"`
+	SecretKey        string `json:"secret_key"`
+	IAMEndpoint      string `json:"iam_endpoint"`
+	STSEndpoint      string `json:"sts_endpoint"`
+	Region           string `json:"region"`
+	MaxRetries       int    `json:"max_retries"`
+	UsernameTemplate string `json:"username_template"`
+}
+
+// copy from: github.com/hashicorp/vault/builtin/logical/aws/path_roles.go
+type awsRoleEntry struct {
+	Version  int    `json:"version"`   // Version number of the role format
+	AuthType string `json:"auth_type"` // Type of authentication to use
+}
+
 func setupConfig() *logical.InmemStorage {
 	context := context.Background()
 	storage := &logical.InmemStorage{}
-	storage.Put(context, &logical.StorageEntry{Key: "config/client", Value: []byte("{}")});
-	// Add generic role, this is needed for the login to work
-	storage.Put(context, &logical.StorageEntry{Key: "role/generic", Value: []byte(`{"auth_type": "iam","version":3}`)});
+
+	// Add the root config to the storage
+	rootConfig := rootConfig{}
+	rootConfigEntry, _ := logical.StorageEntryJSON("config/root", rootConfig)
+	storage.Put(context, rootConfigEntry)
+
+	storage.Put(context, &logical.StorageEntry{Key: "config/client", Value: []byte("{}")})
+
+	// Add a role to the storage
+	role := awsRoleEntry{
+		Version:  3, // we need to set the version to 3, because the server expects a version 3
+		AuthType: "iam",
+	}
+	roleEntry, _ := logical.StorageEntryJSON("role/generic", role)
+	storage.Put(context, roleEntry)
 
 	return storage
 }
@@ -73,7 +102,7 @@ func startServer() {
 	}
 
 	fmt.Println("generated private and public key")
-	
+
 	http.HandleFunc("/v1/auth/aws/login", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("Received request: %s\n", r.URL.Path)
 
@@ -106,16 +135,24 @@ func startServer() {
 			return
 		}
 
-		backend,_ := awsauth.Backend(&logical.BackendConfig{})
+		backend, _ := awsauth.Backend(&logical.BackendConfig{})
 		response, _ := backend.HandleRequest(r.Context(), &logical.Request{
 			Storage:   storage,
 			Operation: logical.UpdateOperation,
 			Path:      "login",
-			Data: data,
+			Data:      data,
 		})
 
 		if response.IsError() {
 			w.WriteHeader(http.StatusUnauthorized)
+
+			if response.Data != nil {
+				if response.Data["error"] != nil {
+					//if you receive an upstream error, you are likely missing the correct role for the server to authenticate to AWS STS
+					fmt.Printf("Error: %s", response.Data["error"].(string))
+				}
+			}
+
 			fmt.Println("Login failed")
 		} else {
 			fmt.Println("Login successful")
@@ -123,16 +160,16 @@ func startServer() {
 			requestedRole := data["role"].(string)
 
 			token := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{
-				"sub": response.Auth.InternalData["canonical_arn"],
-				"iss": "http://localhost:8080", //todo: make configurable
-				"aud": requestedRole, 
-				"azp": requestedRole,
-				"account_id": response.Auth.InternalData["account_id"],
+				"sub":          response.Auth.InternalData["canonical_arn"],
+				"iss":          "http://localhost:8080", //todo: make configurable
+				"aud":          requestedRole,
+				"azp":          requestedRole,
+				"account_id":   response.Auth.InternalData["account_id"],
 				"display_name": response.Auth.DisplayName,
-				"kid": "1", 
-				"iat": time.Now().Unix(), 
-				"exp": time.Now().Add(time.Hour * 24).Unix(),
-				"nbf": time.Now().Unix(),
+				"kid":          "1",
+				"iat":          time.Now().Unix(),
+				"exp":          time.Now().Add(time.Hour * 24).Unix(),
+				"nbf":          time.Now().Unix(),
 			})
 
 			privKey, err := jwt.ParseRSAPrivateKeyFromPEM(pemDataPrivate)
@@ -152,7 +189,7 @@ func startServer() {
 
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(secret)
-		} 
+		}
 	})
 
 	http.HandleFunc("/.well-known/jwks.json", func(w http.ResponseWriter, r *http.Request) {
