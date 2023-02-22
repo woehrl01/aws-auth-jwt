@@ -29,7 +29,7 @@ func doLogin(){
 	}
 
 	fmt.Println()
-	fmt.Printf("AuthInfo: %s\n", b)
+	fmt.Printf("%s", b)
 }
 
 func main() {

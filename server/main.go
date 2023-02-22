@@ -120,11 +120,17 @@ func startServer() {
 		} else {
 			fmt.Println("Login successful")
 
+			requestedRole := data["role"].(string)
+
 			token := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{
-				"canonical_arn": response.Auth.InternalData["canonical_arn"],
+				"sub": response.Auth.InternalData["canonical_arn"],
+				"iss": "http://localhost:8080", //todo: make configurable
+				"aud": requestedRole, 
+				"azp": requestedRole,
 				"account_id": response.Auth.InternalData["account_id"],
 				"display_name": response.Auth.DisplayName,
-				"iat": time.Now().Unix(),
+				"kid": "1", 
+				"iat": time.Now().Unix(), 
 				"exp": time.Now().Add(time.Hour * 24).Unix(),
 				"nbf": time.Now().Unix(),
 			})
@@ -141,11 +147,6 @@ func startServer() {
 			secret := &vault.Secret{
 				Auth: &vault.SecretAuth{
 					ClientToken: tokenString,
-				},
-				Data: map[string]interface{}{
-					"canonical_arn": response.Auth.InternalData["canonical_arn"],
-					"account_id": response.Auth.InternalData["account_id"],
-					"display_name": response.Auth.DisplayName,
 				},
 			}
 
@@ -171,7 +172,6 @@ func startServer() {
 			fmt.Println(err)
 			return
 		}
-		
 
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(map[string]interface{}{
