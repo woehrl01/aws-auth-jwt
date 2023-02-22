@@ -15,11 +15,12 @@ func doLogin(){
 
     client, _ := vault.NewClient(config)
 	awsAuth, _ := auth.NewAWSAuth(
-		auth.WithRole("generic"), // we use a generic role, because we don't have a role in the storage
+		auth.WithRole("generic"),
 	)
 	authInfo, err := awsAuth.Login(context.Background(), client)
 	if err != nil {
 		fmt.Println(err)
+		return
 	}
 
 	b, err := json.MarshalIndent(authInfo, "", "  ")

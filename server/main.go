@@ -1,13 +1,10 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
-	"strings"
 	"time"
 
 	"github.com/go-openapi/runtime/middleware/header"
@@ -24,36 +21,10 @@ func setupConfig() *logical.InmemStorage {
 	// Add generic role, this is needed for the login to work
 	storage.Put(context, &logical.StorageEntry{Key: "role/generic", Value: []byte(`{"auth_type": "iam","version":3}`)});
 
-	//read allowed roles from file iterate over every line and add it to the storage
-	//check if file exists
-	if _, err := os.Stat("allowed_roles.txt"); os.IsNotExist(err) {
-		file, err := os.Open("allowed_roles.txt")
-		if err != nil {
-			fmt.Println("Error opening file:", err)
-			return nil
-		}
-		defer file.Close()
-
-		// Create a scanner
-		scanner := bufio.NewScanner(file)
-
-		// Process each line
-		for scanner.Scan() {
-			role := scanner.Text()
-			storage.Put(context, &logical.StorageEntry{Key: "role/"+strings.ToLower(role), Value: []byte(`{"auth_type": "iam","version":3}`)});
-			fmt.Printf("Added role: %s\n", role)
-		}
-
-		// Check for errors
-		if err := scanner.Err(); err != nil {
-			fmt.Println("Error reading file:", err)
-		}
-	}
 	return storage
 }
 
 func startServer() {
-
 	storage := setupConfig()
 	
 	http.HandleFunc("/v1/auth/aws/login", func(w http.ResponseWriter, r *http.Request) {
@@ -129,7 +100,6 @@ func startServer() {
 
 	http.ListenAndServe(":8081", nil)
 }
-
 
 func main() {
 	startServer()

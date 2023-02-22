@@ -1,7 +1,9 @@
-startServer:
+.PHONY: all server client
+
+server:
 	@echo "Starting server..."
 	@go run server/main.go
 
-startClient:
-	@echo "Starting client..."
+client:
+	@echo "Execute client..."
 	@go run client/main.go
