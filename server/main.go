@@ -13,7 +13,6 @@ import (
 	"github.com/go-openapi/runtime/middleware/header"
 	"github.com/golang-jwt/jwt/v5"
 	vault "github.com/hashicorp/vault/api"
-	auth "github.com/hashicorp/vault/api/auth/aws"
 	awsauth "github.com/hashicorp/vault/builtin/credential/aws"
 	"github.com/hashicorp/vault/sdk/logical"
 )
@@ -128,34 +127,10 @@ func startServer() {
 		} 
 	})
 
-	go http.ListenAndServe(":8081", nil)
-	fmt.Println("Server started")
+	http.ListenAndServe(":8081", nil)
 }
 
-func doLogin(){
-	config := vault.DefaultConfig() 
-	config.Address = "http://localhost:8081";
-
-    client, _ := vault.NewClient(config)
-	awsAuth, _ := auth.NewAWSAuth(
-		auth.WithRole("generic"), // we use a generic role, because we don't have a role in the storage
-	)
-	authInfo, err := awsAuth.Login(context.Background(), client)
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	b, err := json.MarshalIndent(authInfo, "", "  ")
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	fmt.Println()
-	fmt.Printf("AuthInfo: %s\n", b)
-}
 
 func main() {
 	startServer()
-
-	doLogin()
 }
