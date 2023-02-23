@@ -23,10 +23,10 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
-          password: ${{ secrets.GHCR_TOKEN }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and Tag Docker Image
-        run: docker build -t ghcr.io/${{ github.repository }}:${{  github.ref_name }} .
+        run: docker build -t ghcr.io/${{ github.repository }}/aws-auth-jwt:${{  github.ref_name }} .
 
       - name: Push Docker Image
-        run: docker push ghcr.io/${{ github.repository }}:${{  github.ref_name }}
+        run: docker push ghcr.io/${{ github.repository }}/aws-auth-jwt:${{  github.ref_name }}
