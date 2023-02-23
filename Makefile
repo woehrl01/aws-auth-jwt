@@ -2,7 +2,7 @@
 
 server:
 	@echo "Starting server..."
-	@go run server/main.go
+	@docker-compose up --build
 
 client:
 	@echo "Execute client..."
