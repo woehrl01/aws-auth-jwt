@@ -6,7 +6,7 @@ server:
 
 client:
 	@echo "Execute client..."
-	@go run client/main.go | jq .
+	@go run client/main.go
 
 jwks:
 	@echo "Fetch JWKS..."
