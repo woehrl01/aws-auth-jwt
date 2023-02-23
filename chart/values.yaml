@@ -70,6 +70,6 @@ affinity: {}
 
 env: {}
 
-addionalVolumes: []
+additionalVolumes: []
 
-addionalVolumeMounts: []
+additionalVolumeMounts: []
