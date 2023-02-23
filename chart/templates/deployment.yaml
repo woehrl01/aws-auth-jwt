@@ -54,11 +54,7 @@ spec:
               value: {{ $value | quote }}
           {{- end }}
           {{- end }}
-          {{- with .Values.additionalVolumes }}
-          volumes:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-           {{- with .Values.additionalVolumeMounts }}
+          {{- with .Values.additionalVolumeMounts }}
           volumeMounts:
             {{- toYaml . | nindent 12 }}
           {{- end }}
@@ -72,5 +68,9 @@ spec:
       {{- end }}
       {{- with .Values.tolerations }}
       tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.additionalVolumes }}
+      volumes:
         {{- toYaml . | nindent 8 }}
       {{- end }}
