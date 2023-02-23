@@ -51,7 +51,7 @@ func handleSuccessfulLogin(upstreamResponse *logical.Response, w http.ResponseWr
 		"azp":          requestedRole,
 		"account_id":   upstreamResponse.Auth.InternalData["account_id"],
 		"display_name": upstreamResponse.Auth.DisplayName,
-		"kid":          "1",
+		"kid":          keyMaterial.keyID,
 		"iat":          time.Now().Unix(),
 		"exp":          time.Now().Add(time.Hour * time.Duration(expDurationHours)).Unix(),
 		"nbf":          time.Now().Unix(),
