@@ -8,7 +8,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
-	"fmt"
 	"net/http"
 	"os"
 	"time"
@@ -18,7 +17,29 @@ import (
 	vault "github.com/hashicorp/vault/api"
 	awsauth "github.com/hashicorp/vault/builtin/credential/aws"
 	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
+)
+
+var (
+	loginsTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "aws_auth_jwt_login_total",
+		Help: "The total number of login requests",
+	})
+	successfulLoginsTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "aws_auth_jwt_successful_login_total",
+		Help: "The total number of successful login requests",
+	})
+	failedLoginsTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "aws_auth_jwt_failed_login_total",
+		Help: "The total number of failed login requests",
+	})
+	jwksTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "aws_auth_jwt_jwks_total",
+		Help: "The total number of jwks requests",
+	})
 )
 
 // copy from: github.com/hashicorp/vault/builtin/logical/aws/path_config_root.go
@@ -135,10 +156,10 @@ func startServer() {
 		return
 	}
 
-	
-
 	http.HandleFunc("/v1/auth/aws/login", func(w http.ResponseWriter, r *http.Request) {
 		log.Debug("Received request: %s", r.URL.Path)
+
+		loginsTotal.Inc()
 
 		// Check if the request is a PUT
 		if r.Method != "PUT" {
@@ -161,8 +182,8 @@ func startServer() {
 		r.Body = http.MaxBytesReader(w, r.Body, 1048576)
 
 		// Decode the request body into a map
-		var data map[string]interface{}
-		err := json.NewDecoder(r.Body).Decode(&data)
+		var requestData map[string]interface{}
+		err := json.NewDecoder(r.Body).Decode(&requestData)
 		if err != nil {
 			msg := "Request body could not be decoded into JSON"
 			http.Error(w, msg, http.StatusBadRequest)
@@ -170,7 +191,7 @@ func startServer() {
 		}
 
 		if os.Getenv("ALLOW_ALL") == "true" {
-			data["role"] = "generic"
+			requestData["role"] = "generic"
 		}
 
 		backend, _ := awsauth.Backend(&logical.BackendConfig{})
@@ -178,10 +199,11 @@ func startServer() {
 			Storage:   storage,
 			Operation: logical.UpdateOperation,
 			Path:      "login",
-			Data:      data,
+			Data:      requestData,
 		})
 
 		if response.IsError() {
+			failedLoginsTotal.Inc()
 			log.Error("Login failed")
 
 			w.WriteHeader(http.StatusUnauthorized)
@@ -189,13 +211,14 @@ func startServer() {
 			if response.Data != nil {
 				if response.Data["error"] != nil {
 					//if you receive an upstream error, you are likely missing the correct role for the server to authenticate to AWS STS
-					fmt.Printf("Error: %s", response.Data["error"].(string))
+					log.Infof("Error: %s", response.Data["error"].(string))
 				}
 			}
 		} else {
+			successfulLoginsTotal.Inc()
 			log.Info("Login successful")
 
-			requestedRole := data["role"].(string)
+			requestedRole := requestData["role"].(string)
 
 			issuer := "aws-auth-jwt"
 			if os.Getenv("ISSUER") != "" {
@@ -221,11 +244,11 @@ func startServer() {
 				return
 			}
 
-			tokenString, _ := token.SignedString(privKey)
+			signedToken, _ := token.SignedString(privKey)
 
 			secret := &vault.Secret{
 				Auth: &vault.SecretAuth{
-					ClientToken: tokenString,
+					ClientToken: signedToken,
 				},
 			}
 
@@ -235,6 +258,7 @@ func startServer() {
 	})
 
 	http.HandleFunc("/.well-known/jwks.json", func(w http.ResponseWriter, r *http.Request) {
+		jwksTotal.Inc()
 		log.Debug("Received request: %s", r.URL.Path)
 
 		// Check if the request is a GET
@@ -266,22 +290,17 @@ func startServer() {
 		})
 	})
 
+	http.Handle("/metrics", promhttp.Handler())
+
 	log.Info("Starting server on port 8081")
 	http.ListenAndServe(":8081", nil)
 }
 
-
 func initLogging() {
-	// Log as JSON instead of the default ASCII formatter.
 	log.SetFormatter(&log.TextFormatter{})
-  
-	// Output to stdout instead of the default stderr
-	// Can be any io.Writer, see below for File example
 	log.SetOutput(os.Stdout)
-  
-	// Only log the warning severity or above.
 	log.SetLevel(log.InfoLevel)
-  }
+}
 
 func main() {
 	initLogging()
