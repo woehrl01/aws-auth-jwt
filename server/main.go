@@ -12,6 +12,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/etherlabsio/healthcheck/v2"
 	"github.com/go-openapi/runtime/middleware/header"
 	"github.com/golang-jwt/jwt/v5"
 	vault "github.com/hashicorp/vault/api"
@@ -290,6 +291,9 @@ func startServer() {
 	})
 
 	http.Handle("/metrics", promhttp.Handler())
+	http.Handle("/healthz", healthcheck.Handler(
+		healthcheck.WithTimeout(5*time.Second),
+	))
 
 	log.Info("Starting server on port 8081")
 	http.ListenAndServe(":8081", nil)

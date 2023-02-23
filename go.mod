@@ -3,12 +3,14 @@ module woehrl01/aws_auth_jwt
 go 1.19
 
 require (
+	github.com/etherlabsio/healthcheck/v2 v2.0.0
 	github.com/go-openapi/runtime v0.19.24
 	github.com/golang-jwt/jwt/v5 v5.0.0-rc.1
 	github.com/hashicorp/vault v1.12.3
 	github.com/hashicorp/vault/api v1.9.0
 	github.com/hashicorp/vault/api/auth/aws v0.4.0
 	github.com/hashicorp/vault/sdk v0.6.1-0.20221130221033-2b200844a606
+	github.com/prometheus/client_golang v1.14.0
 	github.com/sirupsen/logrus v1.9.0
 )
 
@@ -55,7 +57,6 @@ require (
 	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
 	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/prometheus/client_golang v1.14.0 // indirect
 	github.com/prometheus/client_model v0.3.0 // indirect
 	github.com/prometheus/common v0.37.0 // indirect
 	github.com/prometheus/procfs v0.8.0 // indirect
