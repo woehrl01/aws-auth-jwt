@@ -83,13 +83,13 @@ func setupConfig() *logical.InmemStorage {
 }
 
 func getPrivateKeysFromFile() ([]byte, []byte, error) {
-	pemDataPrivate, err := os.ReadFile("private.pem")
+	pemDataPrivate, err := os.ReadFile("/certs/private.pem")
 	if err != nil {
 		log.Error(err)
 		return nil, nil, err
 	}
 
-	pemDataPublic, err := os.ReadFile("public.pem")
+	pemDataPublic, err := os.ReadFile("/certs/public.pem")
 	if err != nil {
 		log.Error(err)
 		return nil, nil, err
@@ -100,12 +100,12 @@ func getPrivateKeysFromFile() ([]byte, []byte, error) {
 }
 
 func getPrivateKeys() ([]byte, []byte, error) {
-	if _, err := os.Stat("private.pem"); os.IsNotExist(err) {
+	if _, err := os.Stat("/certs/private.pem"); os.IsNotExist(err) {
 		log.Info("private.pem does not exist")
 		return getPrivateKeysGenerated()
 	}
 
-	if _, err := os.Stat("public.pem"); os.IsNotExist(err) {
+	if _, err := os.Stat("/certs/public.pem"); os.IsNotExist(err) {
 		log.Info("public.pem does not exist")
 		return getPrivateKeysGenerated()
 	}

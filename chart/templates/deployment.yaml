@@ -47,6 +47,21 @@ spec:
               port: http
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+          {{- if .Values.env -}}
+          env:
+          {{- range $key, $value := .Values.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+          {{- end }}
+          {{- end }}
+          {{- with .Values.addionalVolumes }}
+          volumes:
+            {{- toYaml . | nindent 8 }}
+          {{- end }}
+           {{- with .Values.volumeMounts }}
+          volumeMounts:
+            {{- toYaml . | nindent 8 }}
+          {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

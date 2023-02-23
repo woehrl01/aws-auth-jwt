@@ -67,3 +67,9 @@ nodeSelector: {}
 tolerations: []
 
 affinity: {}
+
+env: {}
+
+addionalVolumes: []
+
+addionalVolumeMounts: []
