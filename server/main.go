@@ -28,10 +28,10 @@ var (
 		Name: "aws_auth_jwt_login_total",
 		Help: "The total number of login requests",
 	})
-	successfulLoginsTotal = promauto.NewCounter(prometheus.CounterOpts{
+	successfulLoginsTotal = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "aws_auth_jwt_successful_login_total",
 		Help: "The total number of successful login requests",
-	})
+	}, []string{"role"})
 	failedLoginsTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "aws_auth_jwt_failed_login_total",
 		Help: "The total number of failed login requests",
@@ -215,10 +215,9 @@ func startServer() {
 				}
 			}
 		} else {
-			successfulLoginsTotal.Inc()
-			log.Info("Login successful")
-
 			requestedRole := requestData["role"].(string)
+			successfulLoginsTotal.WithLabelValues(requestedRole).Inc()
+			log.Info("Login successful")
 
 			issuer := "aws-auth-jwt"
 			if os.Getenv("ISSUER") != "" {
