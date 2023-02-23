@@ -10,6 +10,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/go-openapi/runtime/middleware/header"
@@ -17,6 +18,7 @@ import (
 	vault "github.com/hashicorp/vault/api"
 	awsauth "github.com/hashicorp/vault/builtin/credential/aws"
 	"github.com/hashicorp/vault/sdk/logical"
+	log "github.com/sirupsen/logrus"
 )
 
 // copy from: github.com/hashicorp/vault/builtin/logical/aws/path_config_root.go
@@ -58,14 +60,44 @@ func setupConfig() *logical.InmemStorage {
 	return storage
 }
 
+func getPrivateKeysFromFile() ([]byte, []byte, error) {
+	pemDataPrivate, err := os.ReadFile("private.pem")
+	if err != nil {
+		log.Error(err)
+		return nil, nil, err
+	}
+
+	pemDataPublic, err := os.ReadFile("public.pem")
+	if err != nil {
+		log.Error(err)
+		return nil, nil, err
+	}
+
+	log.Info("Loaded private and public key from file")
+	return pemDataPrivate, pemDataPublic, nil
+}
+
 func getPrivateKeys() ([]byte, []byte, error) {
+	if _, err := os.Stat("private.pem"); os.IsNotExist(err) {
+		log.Info("private.pem does not exist")
+		return getPrivateKeysGenerated()
+	}
+
+	if _, err := os.Stat("public.pem"); os.IsNotExist(err) {
+		log.Info("public.pem does not exist")
+		return getPrivateKeysGenerated()
+	}
+	return getPrivateKeysFromFile()
+}
+
+func getPrivateKeysGenerated() ([]byte, []byte, error) {
 	// Generate a new private key
 	reader := rand.Reader
 	bitSize := 2048
 
 	key, err := rsa.GenerateKey(reader, bitSize)
 	if err != nil {
-		fmt.Println(err)
+		log.Fatalf("failed to generate private key: %s", err)
 		return nil, nil, err
 	}
 
@@ -78,7 +110,7 @@ func getPrivateKeys() ([]byte, []byte, error) {
 
 	asn1Bytes, err := x509.MarshalPKIXPublicKey(&key.PublicKey)
 	if err != nil {
-		fmt.Println(err)
+		log.Fatalf("unable to marshal public key: %v", err)
 		return nil, nil, err
 	}
 
@@ -89,6 +121,8 @@ func getPrivateKeys() ([]byte, []byte, error) {
 
 	pemDataPublic := pem.EncodeToMemory(publicKey)
 
+	log.Info("generated private and public key")
+
 	return pemDataPrivate, pemDataPublic, nil
 }
 
@@ -97,14 +131,14 @@ func startServer() {
 
 	pemDataPrivate, pemDataPublic, err := getPrivateKeys()
 	if err != nil {
-		fmt.Println(err)
+		log.Fatalf("Could not get private keys: %s", err)
 		return
 	}
 
-	fmt.Println("generated private and public key")
+	
 
 	http.HandleFunc("/v1/auth/aws/login", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Printf("Received request: %s\n", r.URL.Path)
+		log.Debug("Received request: %s", r.URL.Path)
 
 		// Check if the request is a PUT
 		if r.Method != "PUT" {
@@ -135,6 +169,10 @@ func startServer() {
 			return
 		}
 
+		if os.Getenv("ALLOW_ALL") == "true" {
+			data["role"] = "generic"
+		}
+
 		backend, _ := awsauth.Backend(&logical.BackendConfig{})
 		response, _ := backend.HandleRequest(r.Context(), &logical.Request{
 			Storage:   storage,
@@ -144,6 +182,8 @@ func startServer() {
 		})
 
 		if response.IsError() {
+			log.Error("Login failed")
+
 			w.WriteHeader(http.StatusUnauthorized)
 
 			if response.Data != nil {
@@ -152,16 +192,19 @@ func startServer() {
 					fmt.Printf("Error: %s", response.Data["error"].(string))
 				}
 			}
-
-			fmt.Println("Login failed")
 		} else {
-			fmt.Println("Login successful")
+			log.Info("Login successful")
 
 			requestedRole := data["role"].(string)
 
+			issuer := "aws-auth-jwt"
+			if os.Getenv("ISSUER") != "" {
+				issuer = os.Getenv("ISSUER")
+			}
+
 			token := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{
 				"sub":          response.Auth.InternalData["canonical_arn"],
-				"iss":          "http://localhost:8080", //todo: make configurable
+				"iss":          issuer,
 				"aud":          requestedRole,
 				"azp":          requestedRole,
 				"account_id":   response.Auth.InternalData["account_id"],
@@ -174,8 +217,7 @@ func startServer() {
 
 			privKey, err := jwt.ParseRSAPrivateKeyFromPEM(pemDataPrivate)
 			if err != nil {
-				fmt.Print("Error parsing private key")
-				fmt.Println(err)
+				log.Fatalf("Error parsing private key: %s", err)
 				return
 			}
 
@@ -193,7 +235,7 @@ func startServer() {
 	})
 
 	http.HandleFunc("/.well-known/jwks.json", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Printf("Received request: %s\n", r.URL.Path)
+		log.Debug("Received request: %s", r.URL.Path)
 
 		// Check if the request is a GET
 		if r.Method != "GET" {
@@ -204,9 +246,7 @@ func startServer() {
 
 		_, err := jwt.ParseRSAPublicKeyFromPEM(pemDataPublic)
 		if err != nil {
-			fmt.Print("Error parsing public key")
-			fmt.Printf("%s", pemDataPublic)
-			fmt.Println(err)
+			log.Fatalf("Error parsing public key: %s", err)
 			return
 		}
 
@@ -215,11 +255,9 @@ func startServer() {
 			"keys": []map[string]interface{}{
 				{
 					"kty": "RSA",
-					"kid": "1", //should be the same as the kid in the token, and should be unique, therefore infer from the certificate
+					"kid": "1",
 					"alg": "RS256",
 					"use": "sig",
-					//"n": pubkey.N.String(), //uncomment this if you want to use the modulus and exponent
-					//"e": pubkey.E,
 					"x5c": []string{
 						base64.StdEncoding.EncodeToString(pemDataPublic),
 					},
@@ -228,10 +266,24 @@ func startServer() {
 		})
 	})
 
-	fmt.Println("Starting server on port 8081")
+	log.Info("Starting server on port 8081")
 	http.ListenAndServe(":8081", nil)
 }
 
+
+func initLogging() {
+	// Log as JSON instead of the default ASCII formatter.
+	log.SetFormatter(&log.TextFormatter{})
+  
+	// Output to stdout instead of the default stderr
+	// Can be any io.Writer, see below for File example
+	log.SetOutput(os.Stdout)
+  
+	// Only log the warning severity or above.
+	log.SetLevel(log.InfoLevel)
+  }
+
 func main() {
+	initLogging()
 	startServer()
 }

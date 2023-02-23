@@ -9,6 +9,7 @@ require (
 	github.com/hashicorp/vault/api v1.9.0
 	github.com/hashicorp/vault/api/auth/aws v0.4.0
 	github.com/hashicorp/vault/sdk v0.6.1-0.20221130221033-2b200844a606
+	github.com/sirupsen/logrus v1.9.0
 )
 
 require (
