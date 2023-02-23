@@ -24,8 +24,8 @@ import (
 )
 
 var (
-	loginsTotal = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "aws_auth_jwt_login_total",
+	loginRequestsTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "aws_auth_jwt_login_requests_total",
 		Help: "The total number of login requests",
 	})
 	successfulLoginsTotal = promauto.NewCounterVec(prometheus.CounterOpts{
@@ -159,7 +159,7 @@ func startServer() {
 	http.HandleFunc("/v1/auth/aws/login", func(w http.ResponseWriter, r *http.Request) {
 		log.Debug("Received request: %s", r.URL.Path)
 
-		loginsTotal.Inc()
+		loginRequestsTotal.Inc()
 
 		// Check if the request is a PUT
 		if r.Method != "PUT" {
