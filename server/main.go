@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
+	"math/big"
 	"net/http"
 	"os"
 	"strconv"
@@ -276,7 +277,7 @@ func startServer() {
 			return
 		}
 
-		_, err := jwt.ParseRSAPublicKeyFromPEM(pemDataPublic)
+		jwtData, err := jwt.ParseRSAPublicKeyFromPEM(pemDataPublic)
 		if err != nil {
 			log.Fatalf("Error parsing public key: %s", err)
 			return
@@ -290,6 +291,8 @@ func startServer() {
 					"kid": "1",
 					"alg": "RS256",
 					"use": "sig",
+					"n":  base64.RawURLEncoding.EncodeToString(jwtData.N.Bytes()),
+					"e":  base64.RawURLEncoding.EncodeToString(big.NewInt(int64(jwtData.E)).Bytes()),
 					"x5c": []string{
 						base64.StdEncoding.EncodeToString(pemDataPublic),
 					},

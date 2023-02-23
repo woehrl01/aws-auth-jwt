@@ -30,7 +30,7 @@ import (
 // - Send the request to the vault server to Login: /v1/auth/aws/login
 func doLogin() {
 	config := vault.DefaultConfig()
-	config.Address = "http://localhost:8081"
+	config.Address = "https://iam.eks-0-2.plenty.rocks"
 
 	client, _ := vault.NewClient(config)
 	awsAuth, _ := auth.NewAWSAuth(
