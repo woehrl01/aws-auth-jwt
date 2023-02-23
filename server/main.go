@@ -41,6 +41,8 @@ var (
 		Name: "aws_auth_jwt_jwks_total",
 		Help: "The total number of jwks requests",
 	})
+	privateKeyLocation = "/certs/private.pem"
+	publicKeyLocation = "/certs/public.pem"
 )
 
 // copy from: github.com/hashicorp/vault/builtin/logical/aws/path_config_root.go
@@ -83,13 +85,13 @@ func setupConfig() *logical.InmemStorage {
 }
 
 func getPrivateKeysFromFile() ([]byte, []byte, error) {
-	pemDataPrivate, err := os.ReadFile("/certs/private.pem")
+	pemDataPrivate, err := os.ReadFile(privateKeyLocation)
 	if err != nil {
 		log.Error(err)
 		return nil, nil, err
 	}
 
-	pemDataPublic, err := os.ReadFile("/certs/public.pem")
+	pemDataPublic, err := os.ReadFile(publicKeyLocation)
 	if err != nil {
 		log.Error(err)
 		return nil, nil, err
@@ -100,12 +102,12 @@ func getPrivateKeysFromFile() ([]byte, []byte, error) {
 }
 
 func getPrivateKeys() ([]byte, []byte, error) {
-	if _, err := os.Stat("/certs/private.pem"); os.IsNotExist(err) {
+	if _, err := os.Stat(privateKeyLocation); os.IsNotExist(err) {
 		log.Info("private.pem does not exist")
 		return getPrivateKeysGenerated()
 	}
 
-	if _, err := os.Stat("/certs/public.pem"); os.IsNotExist(err) {
+	if _, err := os.Stat(publicKeyLocation); os.IsNotExist(err) {
 		log.Info("public.pem does not exist")
 		return getPrivateKeysGenerated()
 	}
@@ -307,5 +309,14 @@ func initLogging() {
 
 func main() {
 	initLogging()
+
+	if os.Getenv("PRIVATE_KEY_FILE") != "" {
+		privateKeyLocation = os.Getenv("PRIVATE_KEY_FILE")
+	}
+
+	if os.Getenv("PUBLIC_KEY_FILE") != "" {
+		publicKeyLocation = os.Getenv("PUBLIC_KEY_FILE")
+	}
+
 	startServer()
 }
