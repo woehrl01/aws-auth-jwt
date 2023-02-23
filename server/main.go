@@ -10,6 +10,7 @@ import (
 	"encoding/pem"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/etherlabsio/healthcheck/v2"
@@ -227,6 +228,11 @@ func startServer() {
 				issuer = os.Getenv("ISSUER")
 			}
 
+			expDurationHours := 1
+			if os.Getenv("TOKEN_EXPIRATION_HOURS") != "" {
+				expDurationHours, _ = strconv.Atoi(os.Getenv("TOKEN_EXPIRATION_HOURS"))
+			}
+
 			token := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{
 				"sub":          response.Auth.InternalData["canonical_arn"],
 				"iss":          issuer,
@@ -236,7 +242,7 @@ func startServer() {
 				"display_name": response.Auth.DisplayName,
 				"kid":          "1",
 				"iat":          time.Now().Unix(),
-				"exp":          time.Now().Add(time.Hour * 24).Unix(),
+				"exp":          time.Now().Add(time.Hour * time.Duration(expDurationHours)).Unix(),
 				"nbf":          time.Now().Unix(),
 			})
 
