@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 
 	vault "github.com/hashicorp/vault/api"
 	auth "github.com/hashicorp/vault/api/auth/aws"
@@ -30,7 +31,12 @@ import (
 // - Send the request to the vault server to Login: /v1/auth/aws/login
 func doLogin() {
 	config := vault.DefaultConfig()
-	config.Address = "https://iam.eks-0-2.plenty.rocks"
+
+	if os.Getenv("ADDR") != "" {
+		config.Address = os.Getenv("ADDR")
+	}else {
+		config.Address = "http://localhost:8081"
+	}
 
 	client, _ := vault.NewClient(config)
 	awsAuth, _ := auth.NewAWSAuth(
