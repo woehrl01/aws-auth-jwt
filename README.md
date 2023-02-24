@@ -43,7 +43,7 @@ AWS Auth JWT is a service that allows you to authenticate via an IAM role and re
 
 ## Usage with OPA
 
-The following example shows how to use OPA to authorize the token and add additional claims to the token. The package name must be `awsauthjwt.authz`. You can use the `input` variable to access the IAM role and account ID.
+The following example shows how to use OPA to authorize the token and add additional claims to the token. The package name must be `awsauthjwt.authz`. You can use the `input` variable to access the IAM role and account ID. This policy is evaluated after the upstream call to AWS STS has succeeded, this allows to narrow down the IAM roles which are allowed to generate a JWT. It also gives you the ability to add additional claims to the token.
 
 ### Input
 
