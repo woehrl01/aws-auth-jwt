@@ -39,6 +39,7 @@ AWS Auth JWT is a service that allows you to authenticate via an IAM role and re
 - `PRIVATE_KEY_FILE`: This is the path to the private key file used to sign the token. The private key file contains the private key that is used to sign the token, and should be kept secret.
 - `TOKEN_EXPIRATION_HOURS`: This is the number of hours that the token will be valid for, after which it will expire and a new token will need to be generated. Default, is set to "1", which means that the token will be valid for one hour.
 - `OPA_POLICY_FILE`: This is the path to the Open Policy Agent (OPA) policy file. The policy file contains the authorization rules and additional claims that will be added to the token. If this is not set, then the token will only contain the IAM role and the default claims.
+- `LOG_LEVEL`: This is the log level. The log level can be set to `debug`, `info`, `warn`, or `error`. Default, is set to "info".
 
 ## Usage with OPA
 

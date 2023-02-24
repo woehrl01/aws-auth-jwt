@@ -70,10 +70,15 @@ func NewAccessValidatorFromFile(filePath string) *AccessValidatior {
 		log.Fatalf("Failed to read policy file: %v", err)
 		return nil
 	}
+
+	log.Infof("Loaded rego policy from file: %s", filePath)
+
 	return NewAccessValidatorInternal(string(policy))
 }
 
 func NewAccessValidatorFromDefault() *AccessValidatior {
+	log.Infoln("Loaded default rego policy")
+
 	return NewAccessValidatorInternal(`
 	package awsauthjwt.authz
 
