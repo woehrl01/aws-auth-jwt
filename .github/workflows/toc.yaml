@@ -8,6 +8,9 @@ on:
       - "**/README.md"
       - "docs/*.md"
 
+permissions:
+  contents: write
+
 jobs:
   update_toc:
     runs-on: ubuntu-latest
