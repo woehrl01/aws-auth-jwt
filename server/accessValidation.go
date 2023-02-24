@@ -32,12 +32,12 @@ func Allow(claims map[string]interface{}) ValidatorResult {
 	}
 }
 
-func NewAccessValidatorInternal(module string) *AccessValidatior{
+func NewAccessValidatorInternal(module string) *AccessValidatior {
 	ctx := context.Background()
 
 	query, err := rego.New(
-		rego.Query("allow = data.awsiamjwt.authz.allow; claims = data.awsiamjwt.authz.claims"),
-		rego.Module("awsiamjwt.rego", module),
+		rego.Query("allow = data.awsauthjwt.authz.allow; claims = data.awsauthjwt.authz.claims"),
+		rego.Module("awsauthjwt.rego", module),
 	).PrepareForEval(ctx)
 
 	if err != nil {
@@ -75,7 +75,7 @@ func NewAccessValidatorFromFile(filePath string) *AccessValidatior {
 
 func NewAccessValidatorFromDefault() *AccessValidatior {
 	return NewAccessValidatorInternal(`
-	package awsiamjwt.authz
+	package awsauthjwt.authz
 
 	default allow := true
 	default claims := {}

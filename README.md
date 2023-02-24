@@ -38,7 +38,7 @@ AWS Auth JWT is a service that allows you to authenticate via an IAM role and re
 
 ## Usage with OPA
 
-The following example shows how to use OPA to authorize the token and add additional claims to the token. The package name must be `awsiamjwt.authz`. You can use the `input` variable to access the IAM role and account ID.
+The following example shows how to use OPA to authorize the token and add additional claims to the token. The package name must be `awsauthjwt.authz`. You can use the `input` variable to access the IAM role and account ID.
 
 ### Input
 
@@ -68,7 +68,7 @@ The output variables of the policy file are:
 An example policy file is shown below:
 
 ```rego
-package awsiamjwt.authz
+package awsauthjwt.authz
 
 import future.keywords.if
 
