@@ -128,3 +128,36 @@ spec:
     usages:
         - signing
 ```
+
+### Client usage
+
+The following example shows how to use generate a token using go. If you are already using Vault, then you can use the Vault client SDK to generate the token.
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+
+	vault "github.com/hashicorp/vault/api"
+	auth "github.com/hashicorp/vault/api/auth/aws"
+)
+
+func main() {
+	config := vault.DefaultConfig()
+    config.Address = "http://your-aws-auth-jwt-server"
+	client, _ := vault.NewClient(config)
+	awsAuth, _ := auth.NewAWSAuth()
+	authInfo, err := awsAuth.Login(context.TODO(), client)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+    fmt.Printf("Token: %s", authInfo.Auth.ClientToken)
+}
+```
+
+### Disclaimer
+
+This service wraps the Vault AWS Auth method for token validation. This project is not affiliated with HashiCorp, Inc. or Amazon Web Serices (AWS) in any way. 
