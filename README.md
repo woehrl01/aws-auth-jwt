@@ -46,7 +46,7 @@ default allow := false
 default claims := {}
 
 allow if {
-    input.sts.account_id == "123456789012"
+    input.sts.account_id = ["123456789012"][_]
 }
 
 claims[name] if {
@@ -54,7 +54,7 @@ claims[name] if {
     name := "admin"
 }	
 
-claims[name] if{
+claims[name] if {
 	input.sts.arn == "arn:aws:iam::123456789012:role/admin"
     name := "superadmin"
 }	
