@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"os"
@@ -82,8 +83,46 @@ func handleSuccessfulLogin(upstreamResponse *logical.Response, w http.ResponseWr
 
 type loginHandler struct {
 	keyMaterial   *keyMaterialPrivate
-	configuration logical.Storage
+	vaultUpstream *vaultUpstream
 	validator     *AccessValidatior
+}
+
+type vaultUpstream struct {
+	handleRequest func(ctx context.Context, req *logical.Request) (*logical.Response, error)
+	storage       logical.Storage
+}
+
+func NewVaultUpstream(storage logical.Storage) *vaultUpstream {
+	backend, _ := awsauth.Backend(&logical.BackendConfig{})
+	return &vaultUpstream{
+		handleRequest: backend.HandleRequest,
+		storage:       storage,
+	}
+}
+
+func (u *vaultUpstream) executeUpstreamLogin(ctx context.Context, requestData map[string]interface{}) *logical.Response {
+	defer measureTime(stsBackendDuration)
+
+	// The backend expected that the role exsists in the storage, in order to allow the login
+	// and handle the role specific logic later. We need to change the role to the "generic" role
+	// in order to allow the login. After the login we can check if the user has access to the
+	// requested role.
+	// This is a workaround for the fact that the vault aws auth backend requires a valid role.
+	copyRequestData := make(map[string]interface{})
+	for key, value := range requestData {
+		copyRequestData[key] = value
+	}
+	copyRequestData["role"] = "generic"
+
+	// Execute the upstream login request
+	upstreamResponse, _ := u.handleRequest(ctx, &logical.Request{
+		Storage:   u.storage,
+		Operation: logical.UpdateOperation,
+		Path:      "login",
+		Data:      copyRequestData,
+	})
+
+	return upstreamResponse
 }
 
 func (h *loginHandler) Handler() http.HandlerFunc {
@@ -118,24 +157,7 @@ func (h *loginHandler) Handler() http.HandlerFunc {
 			return
 		}
 
-		// The backend expected that the role exsists in the storage, in order to allow the login
-		// and handle the role specific logic later. We need to change the role to the "generic" role
-		// in order to allow the login. After the login we can check if the user has access to the
-		// requested role.
-		// This is a workaround for the fact that the vault aws auth backend requires a valid role.
-		// We revert the role to the original requested role after the login. In order to pass that to the JWT
-		originalReqestedRole := requestData["role"].(string)
-		requestData["role"] = "generic"
-
-		// Execute the upstream login request
-		backend, _ := awsauth.Backend(&logical.BackendConfig{})
-		upstreamResponse, _ := backend.HandleRequest(r.Context(), &logical.Request{
-			Storage:   h.configuration,
-			Operation: logical.UpdateOperation,
-			Path:      "login",
-			Data:      requestData,
-		})
-		requestData["role"] = originalReqestedRole
+		upstreamResponse := h.vaultUpstream.executeUpstreamLogin(r.Context(), requestData)
 
 		// In case that the login was successful to AWS STS we need to check if the user has access to receive a JWT token
 		// We do this by calling the HasAccess method of the AccessValidator. The current implementation of the

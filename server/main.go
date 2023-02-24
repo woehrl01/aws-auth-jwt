@@ -29,6 +29,16 @@ var (
 		Name: "aws_auth_jwt_jwks_total",
 		Help: "The total number of jwks requests",
 	})
+	policyEvaluationDuration = promauto.NewHistogram(prometheus.HistogramOpts{
+		Name:    "aws_auth_jwt_policy_evaluation_duration_seconds",
+		Help:    "The duration of policy evaluation",
+		Buckets: prometheus.LinearBuckets(0.1, 0.1, 10),
+	})
+	stsBackendDuration = promauto.NewHistogram(prometheus.HistogramOpts{
+		Name:    "aws_auth_jwt_sts_backend_duration_seconds",
+		Help:    "The duration of the STS backend call",
+		Buckets: prometheus.LinearBuckets(0.1, 0.1, 10),
+	})
 )
 
 func startServer() {
@@ -42,7 +52,7 @@ func startServer() {
 
 	loginHandler := &loginHandler{
 		keyMaterial:   &keyMaterial.private,
-		configuration: configuration,
+		vaultUpstream: NewVaultUpstream(configuration),
 		validator:     NewAccessValidator(),
 	}
 

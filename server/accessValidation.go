@@ -88,6 +88,8 @@ func NewAccessValidatorFromDefault() *AccessValidatior {
 }
 
 func (v *AccessValidatior) HasAccess(input map[string]interface{}) ValidatorResult {
+	defer measureTime(policyEvaluationDuration)
+
 	results, err := v.rego.Eval(v.context, rego.EvalInput(input))
 	if err != nil || len(results) == 0 {
 		log.Warnf("Failed to evaluate policy: %v", err)

@@ -31,6 +31,7 @@ AWS Auth JWT is a service that allows you to authenticate via an IAM role and re
 - Provide JWKS endpoint for token verification
 - Open Policy Agent (OPA) integration for authorization and additional claims
 - Works great with cert-manager for automatic certificate management
+- Prometheus metrics for monitoring login attempts
 
 ## Environment Variables
 
@@ -40,6 +41,11 @@ AWS Auth JWT is a service that allows you to authenticate via an IAM role and re
 - `TOKEN_EXPIRATION_HOURS`: This is the number of hours that the token will be valid for, after which it will expire and a new token will need to be generated. Default, is set to "1", which means that the token will be valid for one hour.
 - `OPA_POLICY_FILE`: This is the path to the Open Policy Agent (OPA) policy file. The policy file contains the authorization rules and additional claims that will be added to the token. If this is not set, then the token will only contain the IAM role and the default claims.
 - `LOG_LEVEL`: This is the log level. The log level can be set to `debug`, `info`, `warn`, or `error`. Default, is set to "info".
+
+## Endpoints
+
+- `/v1/auth/aws/login`: This is the endpoint that is used to authenticate via IAM role and generate a signed token.
+- `/.well-known/jwks.json`: This is the endpoint that is used to verify the token. This endpoint returns the public key that was used to sign the token.
 
 ## Usage with OPA
 
@@ -81,6 +87,7 @@ default allow := false
 default claims := {}
 
 allow if {
+    # Only allow IAM roles from the account 123456789012
     input.sts.account_id = ["123456789012"][_]
 }
 
@@ -95,6 +102,7 @@ claims[name] if {
 }
 
 claims[name] = val {
+    # Add a custom claim with a static value
     input.requested.role == "awesome-role"
     name := "customerid"
     val := 1234
