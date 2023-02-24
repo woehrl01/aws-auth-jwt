@@ -8,6 +8,15 @@ AWS Auth JWT is a service that allows you to authenticate via an IAM role and re
 <!-- param::isNotitle::true:: -->
 <!-- param::isCustomMode::true:: -->
 
+<p align="center">
+<a href="#features">Features</a>
+<span>|</span>
+<a href="#environment-variables">Environment Variables</a>
+<span>|</span>
+<a href="#usage-with-opa">Usage with OPA</a>
+<span>|</span>
+<a href="#usage-with-cert-manager">Usage with cert-manager</a>
+</p>
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
