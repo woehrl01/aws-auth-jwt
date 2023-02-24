@@ -141,10 +141,19 @@ func (h *loginHandler) Handler() http.HandlerFunc {
 			handleFailedLogin(upstreamResponse, w)
 		} else {
 
+			requestedValidations := map[string]interface{}{}
+			//map all fields from the request to the validation, except the ones that are used for the login
+			for key, value := range requestData {
+				switch key {
+					case "iam_http_request_method", "iam_request_url", "iam_request_body", "iam_request_headers":
+						continue
+					default:
+						requestedValidations[key] = value
+				}
+			}
+
 			inputForAccessValidation := map[string]interface{}{
-				"requested": map[string]interface{}{
-					"role": originalReqestedRole,
-				},
+				"requested": requestedValidations,
 				"sts": map[string]interface{}{
 					"arn":        upstreamResponse.Auth.InternalData["canonical_arn"],
 					"account_id": upstreamResponse.Auth.InternalData["account_id"],
