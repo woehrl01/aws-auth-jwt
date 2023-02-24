@@ -69,7 +69,12 @@ func handleSuccessfulLogin(upstreamResponse *logical.Response, w http.ResponseWr
 	json.NewEncoder(w).Encode(secret)
 }
 
-func loginHandler(keyMaterial *keyMaterialPrivate, storage logical.Storage) http.HandlerFunc {
+type loginHandler struct {
+	keyMaterial *keyMaterialPrivate
+	configuration     logical.Storage
+}
+
+func (h *loginHandler) Handler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log.Debug("Received request: %s", r.URL.Path)
 		loginRequestsTotal.Inc()
@@ -102,6 +107,7 @@ func loginHandler(keyMaterial *keyMaterialPrivate, storage logical.Storage) http
 		}
 
 		// If ALLOW_ALL is set to true, allow all requests by setting the role to "generic"
+		originalReqestedRole := requestData["role"].(string)
 		if os.Getenv("ALLOW_ALL") == "true" {
 			requestData["role"] = "generic"
 		}
@@ -109,17 +115,18 @@ func loginHandler(keyMaterial *keyMaterialPrivate, storage logical.Storage) http
 		// Execute the upstream login request
 		backend, _ := awsauth.Backend(&logical.BackendConfig{})
 		upstreamResponse, _ := backend.HandleRequest(r.Context(), &logical.Request{
-			Storage:   storage,
+			Storage:   h.configuration,
 			Operation: logical.UpdateOperation,
 			Path:      "login",
 			Data:      requestData,
 		})
 
+		requestData["role"] = originalReqestedRole
+
 		if upstreamResponse.IsError() {
 			handleFailedLogin(upstreamResponse, w)
 		} else {
-			handleSuccessfulLogin(upstreamResponse, w, requestData, keyMaterial)
+			handleSuccessfulLogin(upstreamResponse, w, requestData, h.keyMaterial)
 		}
 	}
-
 }

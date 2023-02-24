@@ -32,7 +32,7 @@ var (
 )
 
 func startServer() {
-	storage := setupConfig()
+	configuration := setupConfig()
 
 	keyMaterial, err := getKeyMaterial()
 	if err != nil {
@@ -40,8 +40,17 @@ func startServer() {
 		return
 	}
 
-	http.HandleFunc("/v1/auth/aws/login", loginHandler(&keyMaterial.private, storage))
-	http.HandleFunc("/.well-known/jwks.json", wellKnownHandler(&keyMaterial.public))
+	loginHandler := &loginHandler{
+		keyMaterial: &keyMaterial.private,
+		configuration:     configuration,
+	}
+
+	wellKnownHandler := &wellKnownHandler{
+		keyMaterial: &keyMaterial.public,
+	}
+
+	http.HandleFunc("/v1/auth/aws/login", loginHandler.Handler())
+	http.HandleFunc("/.well-known/jwks.json", wellKnownHandler.Handler())
 	http.Handle("/metrics", promhttp.Handler())
 	http.Handle("/healthz", healthcheck.Handler(healthcheck.WithTimeout(5*time.Second)))
 
