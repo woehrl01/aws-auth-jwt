@@ -129,9 +129,11 @@ spec:
         - signing
 ```
 
-### Client usage
+## Client usage
 
 The following example shows how to use generate a token using go. If you are already using Vault, then you can use the Vault client SDK to generate the token.
+
+For other languages, [see the algorithm](https://github.com/woehrl01/aws-auth-jwt/blob/24943cd7d6fd978366111ff12895d977ba95b089/client/main.go#L13-L31) use to generate the PUT request to the `/v1/auth/aws/login` endpoint.
 
 ```go
 package main
@@ -158,6 +160,6 @@ func main() {
 }
 ```
 
-### Disclaimer
+## Disclaimer
 
 This service wraps the Vault AWS Auth method for token validation. This project is not affiliated with HashiCorp, Inc. or Amazon Web Serices (AWS) in any way. 
