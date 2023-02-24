@@ -80,20 +80,20 @@ allow if {
 }
 
 claims[name] if {
-	input.sts.arn == "arn:aws:iam::123456789012:role/admin"
+    input.sts.arn == "arn:aws:iam::123456789012:role/admin"
     name := "admin"
-}	
+}
 
 claims[name] if {
-	input.sts.arn == "arn:aws:iam::123456789012:role/admin"
+    input.sts.arn == "arn:aws:iam::123456789012:role/admin"
     name := "superadmin"
-}	
+}
 
 claims[name] = val {
-	input.requested.role == "awesome-role"
+    input.requested.role == "awesome-role"
     name := "customerid"
     val := 1234
-}	
+}
 ```
 
 
