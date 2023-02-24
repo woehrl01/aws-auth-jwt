@@ -73,3 +73,5 @@ env: {}
 additionalVolumes: []
 
 additionalVolumeMounts: []
+
+revisionHistoryLimit: 10
