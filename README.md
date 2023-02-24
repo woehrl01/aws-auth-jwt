@@ -2,6 +2,24 @@
 
 AWS Auth JWT is a service that allows you to authenticate via an IAM role and returns a signed JSON Web Token (JWT) that you can use for authorization. It provides a JWKS endpoint to verify the token.
 
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- param::isFolding::false:: -->
+<!-- param::isNotitle::true:: -->
+<!-- param::isCustomMode::true:: -->
+
+<p align="center">
+<a href="#features">Features</a>
+<span>|</span>
+<a href="#environment-variables">Environment Variables</a>
+<span>|</span>
+<a href="#usage-with-opa">Usage with OPA</a>
+<span>|</span>
+<a href="#usage-with-cert-manager">Usage with cert-manager</a>
+</p>
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## Features
 
 - Authenticate via IAM role
@@ -21,6 +39,9 @@ AWS Auth JWT is a service that allows you to authenticate via an IAM role and re
 ## Usage with OPA
 
 The following example shows how to use OPA to authorize the token and add additional claims to the token. The package name must be `awsiamjwt.authz`. You can use the `input` variable to access the IAM role and account ID.
+
+### Input
+
 The input variable is a JSON object that contains the following fields:
 
 ```json
@@ -34,6 +55,15 @@ The input variable is a JSON object that contains the following fields:
     }
 }
 ```
+
+### Output
+
+The output variables of the policy file are:
+
+- `allow`: This is a boolean value that determines if the token is allowed or not. If this is set to `true`, then the token will be allowed. If this is set to `false`, then the token will be denied.
+- `claims`: This is a JSON object that contains the additional claims that will be added to the token. The key is the claim name, and the value is the claim value.
+
+### Example
 
 An example policy file is shown below:
 
