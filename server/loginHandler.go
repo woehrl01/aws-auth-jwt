@@ -137,36 +137,41 @@ func (h *loginHandler) Handler() http.HandlerFunc {
 		})
 		requestData["role"] = originalReqestedRole
 
+		// In case that the login was successful to AWS STS we need to check if the user has access to receive a JWT token
+		// We do this by calling the HasAccess method of the AccessValidator. The current implementation of the
+		// AccessValidator is using the Open Policy Agent (OPA) to validate the access.
 		if upstreamResponse.IsError() {
 			handleFailedLogin(upstreamResponse, w)
 		} else {
-
-			requestedValidations := map[string]interface{}{}
-			//map all fields from the request to the validation, except the ones that are used for the login
-			for key, value := range requestData {
-				switch key {
-					case "iam_http_request_method", "iam_request_url", "iam_request_body", "iam_request_headers":
-						continue
-					default:
-						requestedValidations[key] = value
-				}
-			}
-
-			inputForAccessValidation := map[string]interface{}{
-				"requested": requestedValidations,
-				"sts": map[string]interface{}{
-					"arn":        upstreamResponse.Auth.InternalData["canonical_arn"],
-					"account_id": upstreamResponse.Auth.InternalData["account_id"],
-				},
-			}
-
+			inputForAccessValidation := buildValidationInput(requestData, upstreamResponse)
 			validationResult := h.validator.HasAccess(inputForAccessValidation)
 			if !validationResult.Allow {
 				handleFailedLogin(upstreamResponse, w)
-				return
+			} else {
+				handleSuccessfulLogin(upstreamResponse, w, requestData, h.keyMaterial, validationResult.Claims)
 			}
-
-			handleSuccessfulLogin(upstreamResponse, w, requestData, h.keyMaterial, validationResult.Claims)
 		}
 	}
+}
+
+func buildValidationInput(requestData map[string]interface{}, upstreamResponse *logical.Response) map[string]interface{} {
+	requestedValidations := map[string]interface{}{}
+	for key, value := range requestData {
+		switch key {
+		case "iam_http_request_method", "iam_request_url", "iam_request_body", "iam_request_headers":
+			continue
+		default:
+			requestedValidations[key] = value
+		}
+	}
+
+	inputForAccessValidation := map[string]interface{}{
+		"requested": requestedValidations,
+		"sts": map[string]interface{}{
+			"arn":        upstreamResponse.Auth.InternalData["canonical_arn"],
+			"account_id": upstreamResponse.Auth.InternalData["account_id"],
+		},
+	}
+
+	return inputForAccessValidation
 }
