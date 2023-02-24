@@ -41,8 +41,9 @@ func startServer() {
 	}
 
 	loginHandler := &loginHandler{
-		keyMaterial: &keyMaterial.private,
-		configuration:     configuration,
+		keyMaterial:   &keyMaterial.private,
+		configuration: configuration,
+		validator:     NewAccessValidator(),
 	}
 
 	wellKnownHandler := &wellKnownHandler{

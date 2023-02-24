@@ -51,7 +51,6 @@ func getPrivateKeys() ([]byte, []byte, error) {
 	}
 
 	if allFilesExist {
-
 		return getPrivateKeysFromFile(privateKeyLocation, publicKeyLocation)
 	} else {
 		return getPrivateKeysGenerated()
@@ -100,14 +99,14 @@ type keyMaterial struct {
 }
 
 type keyMaterialPublic struct {
-	pem []byte
-	key *rsa.PublicKey
+	pem   []byte
+	key   *rsa.PublicKey
 	keyID string
 }
 
 type keyMaterialPrivate struct {
-	pem []byte
-	key *rsa.PrivateKey
+	pem   []byte
+	key   *rsa.PrivateKey
 	keyID string
 }
 
@@ -135,13 +134,13 @@ func getKeyMaterial() (*keyMaterial, error) {
 
 	return &keyMaterial{
 		private: keyMaterialPrivate{
-			pem: pemDataPrivate,
-			key: privateKey,
+			pem:   pemDataPrivate,
+			key:   privateKey,
 			keyID: kid,
 		},
 		public: keyMaterialPublic{
-			pem: pemDataPublic,
-			key: publicKey,
+			pem:   pemDataPublic,
+			key:   publicKey,
 			keyID: kid,
 		},
 	}, nil

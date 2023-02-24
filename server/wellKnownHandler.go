@@ -9,11 +9,11 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type wellKnownHandler struct{
-	keyMaterial * keyMaterialPublic
+type wellKnownHandler struct {
+	keyMaterial *keyMaterialPublic
 }
 
-func (h*wellKnownHandler) Handler() http.HandlerFunc {
+func (h *wellKnownHandler) Handler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		jwksTotal.Inc()
 		log.Debug("Received request: %s", r.URL.Path)

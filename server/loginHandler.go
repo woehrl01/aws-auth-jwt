@@ -28,7 +28,7 @@ func handleFailedLogin(upstreamResponse *logical.Response, w http.ResponseWriter
 	}
 }
 
-func handleSuccessfulLogin(upstreamResponse *logical.Response, w http.ResponseWriter, requestData map[string]interface{}, keyMaterial *keyMaterialPrivate) {
+func handleSuccessfulLogin(upstreamResponse *logical.Response, w http.ResponseWriter, requestData map[string]interface{}, keyMaterial *keyMaterialPrivate, claims map[string]interface{}) {
 	requestedRole := requestData["role"].(string)
 	successfulLoginsTotal.WithLabelValues(requestedRole).Inc()
 	log.Info("Login successful")
@@ -43,8 +43,7 @@ func handleSuccessfulLogin(upstreamResponse *logical.Response, w http.ResponseWr
 		expDurationHours, _ = strconv.Atoi(os.Getenv("TOKEN_EXPIRATION_HOURS"))
 	}
 
-	// Create the JWT token with the claims
-	token := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{
+	jwtClaims := jwt.MapClaims{
 		"sub":          upstreamResponse.Auth.InternalData["canonical_arn"],
 		"iss":          issuer,
 		"aud":          requestedRole,
@@ -55,7 +54,19 @@ func handleSuccessfulLogin(upstreamResponse *logical.Response, w http.ResponseWr
 		"iat":          time.Now().Unix(),
 		"exp":          time.Now().Add(time.Hour * time.Duration(expDurationHours)).Unix(),
 		"nbf":          time.Now().Unix(),
-	})
+	}
+
+	// Add custom claims
+	for key, value := range claims {
+		if _, exists := jwtClaims[key]; exists {
+			log.Warnf("Claim %s already exists, skipping", key)
+			continue
+		}
+		jwtClaims[key] = value
+	}
+
+	// Create the JWT token with the claims
+	token := jwt.NewWithClaims(jwt.SigningMethodRS256, jwtClaims)
 
 	signedToken, _ := token.SignedString(keyMaterial.key)
 
@@ -70,8 +81,9 @@ func handleSuccessfulLogin(upstreamResponse *logical.Response, w http.ResponseWr
 }
 
 type loginHandler struct {
-	keyMaterial *keyMaterialPrivate
-	configuration     logical.Storage
+	keyMaterial   *keyMaterialPrivate
+	configuration logical.Storage
+	validator     *AccessValidatior
 }
 
 func (h *loginHandler) Handler() http.HandlerFunc {
@@ -106,11 +118,14 @@ func (h *loginHandler) Handler() http.HandlerFunc {
 			return
 		}
 
-		// If ALLOW_ALL is set to true, allow all requests by setting the role to "generic"
+		// The backend expected that the role exsists in the storage, in order to allow the login
+		// and handle the role specific logic later. We need to change the role to the "generic" role
+		// in order to allow the login. After the login we can check if the user has access to the
+		// requested role.
+		// This is a workaround for the fact that the vault aws auth backend requires a valid role.
+		// We revert the role to the original requested role after the login. In order to pass that to the JWT
 		originalReqestedRole := requestData["role"].(string)
-		if os.Getenv("ALLOW_ALL") == "true" {
-			requestData["role"] = "generic"
-		}
+		requestData["role"] = "generic"
 
 		// Execute the upstream login request
 		backend, _ := awsauth.Backend(&logical.BackendConfig{})
@@ -120,13 +135,29 @@ func (h *loginHandler) Handler() http.HandlerFunc {
 			Path:      "login",
 			Data:      requestData,
 		})
-
 		requestData["role"] = originalReqestedRole
 
 		if upstreamResponse.IsError() {
 			handleFailedLogin(upstreamResponse, w)
 		} else {
-			handleSuccessfulLogin(upstreamResponse, w, requestData, h.keyMaterial)
+
+			inputForAccessValidation := map[string]interface{}{
+				"requested": map[string]interface{}{
+					"role": originalReqestedRole,
+				},
+				"sts": map[string]interface{}{
+					"arn":        upstreamResponse.Auth.InternalData["canonical_arn"],
+					"account_id": upstreamResponse.Auth.InternalData["account_id"],
+				},
+			}
+
+			validationResult := h.validator.HasAccess(inputForAccessValidation)
+			if !validationResult.Allow {
+				handleFailedLogin(upstreamResponse, w)
+				return
+			}
+
+			handleSuccessfulLogin(upstreamResponse, w, requestData, h.keyMaterial, validationResult.Claims)
 		}
 	}
 }
