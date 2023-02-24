@@ -173,6 +173,11 @@ func main() {
 }
 ```
 
+## Prior Art
+
+- [hashicorp/vault](https://github.com/hashicorp/vault) - This project reuses the Vault AWS Auth method for STS token validation.
+- [kubernetes-sigs/aws-iam-authenticator](https://github.com/kubernetes-sigs/aws-iam-authenticator) - Uses the same mechanism for authenticating with AWS IAM roles.
+
 ## Disclaimer
 
 This service wraps the Vault AWS Auth method for token validation. This project is not affiliated with HashiCorp, Inc. or Amazon Web Serices (AWS) in any way. 
