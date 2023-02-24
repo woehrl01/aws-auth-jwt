@@ -4,6 +4,8 @@ metadata:
   name: {{ include "aws-auth-jwt.fullname" . }}
   labels:
     {{- include "aws-auth-jwt.labels" . | nindent 4 }}
+  annotations:
+    checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
 spec:
   {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
@@ -50,17 +52,45 @@ spec:
               port: http
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
-          {{- if .Values.env }}
           env:
+            - name: ISSUER
+              value: {{ .Values.jwt.issuer }}
+          {{- with .Values.jwt.publicKeyFile }}
+            - name: PUBLIC_KEY_FILE
+              value: {{ . }}
+          {{- end }}
+          {{- with .Values.jwt.privateKeyFile }}
+            - name: PRIVATE_KEY_FILE
+              value: {{ . }}
+          {{- end }}
+          {{- with .Values.jwt.tokenExpirationHours }}
+            - name: TOKEN_EXPIRATION_HOURS
+              value: {{ . | quote }}
+          {{- end }}
+          {{- if .Values.opa.policyInline }}
+            - name: OPA_POLICY_FILE
+              value: /policy/policy.rego
+          {{- end }}
+          {{- with .Values.logLevel }}
+            - name: LOG_LEVEL
+              value: {{ . }}
+          {{- end }}
+          {{- if .Values.env }}
           {{- range $key, $value := .Values.env }}
             - name: {{ $key }}
               value: {{ $value | quote }}
           {{- end }}
           {{- end }}
-          {{- with .Values.additionalVolumeMounts }}
           volumeMounts:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
+            - name: policy
+              mountPath: /policy
+            {{- if .Values.certificateSecretName }}
+            - name: certificate
+              mountPath: /certs
+            {{- end }}
+            {{- with .Values.additionalVolumeMounts }}
+              {{- toYaml . | nindent 12 }}
+            {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -73,7 +103,15 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.additionalVolumes }}
       volumes:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
+        - name: policy
+          configMap:
+            name: {{ include "aws-auth-jwt.fullname" . }}-policy
+        {{- if .Values.certificateSecretName }}
+        - name: certificate
+          secret:
+            secretName: {{ .Values.certificateSecretName }}
+        {{- end }}
+        {{- with .Values.additionalVolumes }}
+          {{- toYaml . | nindent 8 }}
+        {{- end }}
