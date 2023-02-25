@@ -6,8 +6,11 @@ metadata:
   labels:
     {{- include "aws-auth-jwt.labels" . | nindent 4 }}
 spec:
+  {{- if .Values.pdb.minAvailable }}
   minAvailable: {{ .Values.pdb.minAvailable }}
+  {{- else }}
   maxUnavailable: {{ .Values.pdb.maxUnavailable }}
+  {{- end }}
   selector: 
     matchLabels:
       {{- include "aws-auth-jwt.selectorLabels" . | nindent 6 }}
