@@ -53,7 +53,7 @@ func startServer() {
 		vaultUpstream: NewVaultUpstream(),
 		validator:     NewAccessValidator(),
 	}
-
+ 
 	wellKnownHandler := &wellKnownHandler{
 		keyMaterial: &keyMaterial.public,
 	}
