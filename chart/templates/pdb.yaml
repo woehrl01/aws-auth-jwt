@@ -1,0 +1,14 @@
+{{- if .Values.pdb.enabled -}}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "aws-auth-jwt.fullname" . }}
+  labels:
+    {{- include "aws-auth-jwt.labels" . | nindent 4 }}
+spec:
+  minAvailable: {{ .Values.pdb.minAvailable }}
+  maxUnavailable: {{ .Values.pdb.maxUnavailable }}
+  selector: 
+    matchLabels:
+      {{- include "aws-auth-jwt.selectorLabels" . | nindent 6 }}
+{{- end -}}

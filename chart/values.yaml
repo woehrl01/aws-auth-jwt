@@ -76,6 +76,11 @@ additionalVolumeMounts: []
 
 revisionHistoryLimit: 10
 
+pdb:
+  enabled: false
+  minAvailable: 1
+  maxUnavailable: 1
+
 jwt:
   # name of the issuer used in the JWT token
   issuer: aws-auth-jwt 
