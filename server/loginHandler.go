@@ -50,12 +50,15 @@ func handleSuccessfulLogin(upstreamResponse *logical.Response, w http.ResponseWr
 		"aud":          requestedRole,
 		"azp":          requestedRole,
 		"account_id":   upstreamResponse.Auth.InternalData["account_id"],
+		"user_id":      upstreamResponse.Auth.InternalData["client_user_id"],
 		"display_name": upstreamResponse.Auth.DisplayName,
 		"kid":          keyMaterial.keyID,
 		"iat":          time.Now().Unix(),
 		"exp":          time.Now().Add(time.Hour * time.Duration(expDurationHours)).Unix(),
 		"nbf":          time.Now().Unix(),
 	}
+
+	log.Debugf("Claims: %v", upstreamResponse.Auth.InternalData)
 
 	// Add custom claims
 	for key, value := range claims {
@@ -92,11 +95,12 @@ type vaultUpstream struct {
 	storage       logical.Storage
 }
 
-func NewVaultUpstream(storage logical.Storage) *vaultUpstream {
+func NewVaultUpstream() *vaultUpstream {
+	configuration := setupConfig()
 	backend, _ := awsauth.Backend(&logical.BackendConfig{})
 	return &vaultUpstream{
 		handleRequest: backend.HandleRequest,
-		storage:       storage,
+		storage:       configuration,
 	}
 }
 
@@ -192,6 +196,7 @@ func buildValidationInput(requestData map[string]interface{}, upstreamResponse *
 		"sts": map[string]interface{}{
 			"arn":        upstreamResponse.Auth.InternalData["canonical_arn"],
 			"account_id": upstreamResponse.Auth.InternalData["account_id"],
+			"user_id":    upstreamResponse.Auth.InternalData["client_user_id"],
 		},
 	}
 

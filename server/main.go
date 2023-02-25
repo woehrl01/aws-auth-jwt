@@ -42,8 +42,6 @@ var (
 )
 
 func startServer() {
-	configuration := setupConfig()
-
 	keyMaterial, err := getKeyMaterial()
 	if err != nil {
 		log.Fatalf("Could not get key material: %s", err)
@@ -52,7 +50,7 @@ func startServer() {
 
 	loginHandler := &loginHandler{
 		keyMaterial:   &keyMaterial.private,
-		vaultUpstream: NewVaultUpstream(configuration),
+		vaultUpstream: NewVaultUpstream(),
 		validator:     NewAccessValidator(),
 	}
 

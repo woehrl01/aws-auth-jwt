@@ -40,7 +40,7 @@ AWS Auth JWT is a service that allows you to authenticate via an IAM role and re
 - `PRIVATE_KEY_FILE`: This is the path to the private key file used to sign the token. The private key file contains the private key that is used to sign the token, and should be kept secret.
 - `TOKEN_EXPIRATION_HOURS`: This is the number of hours that the token will be valid for, after which it will expire and a new token will need to be generated. Default, is set to "1", which means that the token will be valid for one hour.
 - `OPA_POLICY_FILE`: This is the path to the Open Policy Agent (OPA) policy file. The policy file contains the authorization rules and additional claims that will be added to the token. If this is not set, then the token will only contain the IAM role and the default claims.
-- `LOG_LEVEL`: This is the log level. The log level can be set to `debug`, `info`, `warn`, or `error`. Default, is set to "info".
+- `LOG_LEVEL`: This is the log level. The log level can be set to `debug`, `info`, `warn`, or `error`. Default, is set to `info`.
 
 ## Endpoints
 
@@ -62,7 +62,8 @@ The input variable is a JSON object that contains the following fields:
     },
     "sts":{
         "arn":        "arn:aws:iam::123456789012:role/admin",
-        "account_id": "123456789012"
+        "account_id": "123456789012",
+        "user_id": "AROAW6U6EEXAMPLE:admin"
     }
 }
 ```
@@ -71,8 +72,8 @@ The input variable is a JSON object that contains the following fields:
 
 The output variables of the policy file are:
 
-- `allow`: This is a boolean value that determines if the token is allowed or not. If this is set to `true`, then the token will be allowed. If this is set to `false`, then the token will be denied.
-- `claims`: This is a JSON object that contains the additional claims that will be added to the token. The key is the claim name, and the value is the claim value.
+- `allow`: This is a boolean value that determines if the generation of a token is allowed or not. If this is set to `true`, then the token will be generated. If this is set to `false`, then the request will be denied.
+- `claims`: This is a JSON object that contains the additional claims that will be added to the token. The key is the claim name, and the value is the claim value. This is useful to map additional claims from the request to the token.
 
 ### Example
 
@@ -112,7 +113,7 @@ claims[name] = val {
 
 ## Usage with cert-manager
 
-The following example shows how to use cert-manager to automatically generate a certificate for the JWT to sign the token.
+The following example shows how to use cert-manager to automatically generate a certificate for signing the token.
 
 ```yaml
 apiVersion: cert-manager.io/v1
@@ -144,7 +145,7 @@ spec:
 
 ## Client usage
 
-The following example shows how to use generate a token using go. If you are already using Vault, then you can use the Vault client SDK to generate the token.
+The following example shows how to use Golang to request a token. If you are already using Vault, then you can use the Vault client SDK to request the token.
 
 For other languages, [see the algorithm](https://github.com/woehrl01/aws-auth-jwt/blob/24943cd7d6fd978366111ff12895d977ba95b089/client/main.go#L13-L31) use to generate the PUT request to the `/v1/auth/aws/login` endpoint.
 
