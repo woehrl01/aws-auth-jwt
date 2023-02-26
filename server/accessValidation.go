@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"io/fs"
 
 	"github.com/hashicorp/vault/sdk/logical"
 	log "github.com/sirupsen/logrus"
@@ -65,7 +66,11 @@ func NewAccessValidator() *AccessValidatior {
 func NewAccessValidatorFromFile(filePath string) *AccessValidatior {
 	log.Infof("Load rego policy from file: %s", filePath)
 
-	return NewAccessValidatorInternal(rego.Load([]string{filePath}, nil))
+	onlyFirstLevel := func(abspath string, info fs.FileInfo, depth int) bool {
+		return depth != 0
+	}
+
+	return NewAccessValidatorInternal(rego.Load([]string{filePath}, onlyFirstLevel))
 }
 
 func NewAccessValidatorFromDefault() *AccessValidatior {
@@ -83,8 +88,9 @@ func (v *AccessValidatior) HasAccess(requestData map[string]interface{}, upstrea
 	defer measureTime(policyEvaluationDuration)
 
 	input := buildValidationInput(requestData, upstreamResponse)
-	results, err := v.rego.Eval(v.context, rego.EvalInput(input))
 
+	results, err := v.rego.Eval(v.context, rego.EvalInput(input))
+	
 	if err != nil || len(results) == 0 {
 		log.Warnf("Failed to evaluate policy: %v", err)
 		return Deny()
