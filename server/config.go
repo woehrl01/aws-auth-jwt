@@ -37,7 +37,7 @@ func setupConfig() *logical.InmemStorage {
 	// Add a role to the storage
 	role := awsRoleEntry{
 		Version:  3, // we need to set the version to 3, because the server expects a version 3
-		AuthType: "iam",
+		AuthType: "iam", // we need to set the auth type to "iam", in order to enable the login for AWS IAM
 	}
 	roleEntry, _ := logical.StorageEntryJSON("role/generic", role)
 	storage.Put(context, roleEntry)

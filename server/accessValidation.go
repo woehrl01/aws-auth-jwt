@@ -78,7 +78,7 @@ func NewAccessValidator() *AccessValidatior {
 }
 
 func NewAccessValidatorFromFile(filePath string) *AccessValidatior {
-	log.Infof("Load rego policy from file: %s", filePath)
+	log.Infof("Load rego policy from: %s", filePath)
 
 	onlyFirstLevel := func(abspath string, info fs.FileInfo, depth int) bool {
 		// we only want to load the first level of the directory
