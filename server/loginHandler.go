@@ -26,18 +26,20 @@ func handleFailedLogin(upstreamResponse *logical.Response, w http.ResponseWriter
 }
 
 func handleSuccessfulLogin(upstreamResponse *logical.Response, w http.ResponseWriter, requestData map[string]interface{}, keyMaterial *keyMaterialPrivate, claims map[string]interface{}) {
-	requestedRole := "default"
-	if requestData["role"] != nil {
-		requestedRole = requestData["role"].(string)
+	audience := "generic"
+	if requestData["audience"] != nil {
+		audience = requestData["audience"].(string)
+	} else if requestData["role"] != nil {
+		audience = requestData["role"].(string)
 	}
-	successfulLoginsTotal.WithLabelValues(requestedRole).Inc()
+	successfulLoginsTotal.WithLabelValues(audience).Inc()
 	log.Info("Login successful")
 
 	jwtClaims := jwt.MapClaims{
 		"sub":          upstreamResponse.Auth.InternalData["canonical_arn"],
 		"iss":          settings.issuer,
-		"aud":          requestedRole,
-		"azp":          requestedRole,
+		"aud":          audience,
+		"azp":          audience,
 		"account_id":   upstreamResponse.Auth.InternalData["account_id"],
 		"user_id":      upstreamResponse.Auth.InternalData["client_user_id"],
 		"display_name": upstreamResponse.Auth.DisplayName,
