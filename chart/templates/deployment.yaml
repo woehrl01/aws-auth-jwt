@@ -68,8 +68,8 @@ spec:
               value: {{ . | quote }}
           {{- end }}
           {{- if .Values.opa.policyInline }}
-            - name: OPA_POLICY_FILE
-              value: /policy/policy.rego
+            - name: OPA_POLICY_FOLDER
+              value: /policy/
           {{- end }}
           {{- with .Values.logLevel }}
             - name: LOG_LEVEL
