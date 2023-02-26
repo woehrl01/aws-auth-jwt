@@ -16,7 +16,7 @@ import (
 
 func handleFailedLogin(upstreamResponse *logical.Response, w http.ResponseWriter) {
 	failedLoginsTotal.Inc()
-	log.Error("Login failed")
+	log.Info("Login failed")
 
 	w.WriteHeader(http.StatusUnauthorized)
 
