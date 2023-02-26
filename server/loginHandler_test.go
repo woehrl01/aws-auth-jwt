@@ -28,10 +28,11 @@ func TestLoginHandler_ServeHTTP(t *testing.T) {
 		h.upstream = &mockUpstream{
 			response: UpstreamResponse{
 				LoginSucceeded: true,
-				Data: map[string]interface{}{
-					"canonical_arn":  "arn:aws:iam::123456789012:role/role-name",
-					"account_id":     "123456789012",
-					"client_user_id": "AIDAJQABLZS4A3QDU576Q",
+				Success: UpstreamResponseSuccess{
+					DisplayName: "John Doe",
+					Arn:         "arn:aws:iam::123456789012:role/role-name",
+					AccountId:   "123456789012",
+					UserId:      "AIDAJQABLZS4A3QDU576Q",
 				},
 			},
 		}
@@ -88,8 +89,8 @@ func TestLoginHandler_ServeHTTP(t *testing.T) {
 		h.upstream = &mockUpstream{
 			response: UpstreamResponse{
 				LoginSucceeded: false,
-				Data: map[string]interface{}{
-					"error": "invalid credentials",
+				Error: UpstreamResponseError{
+					ErrorMessage: "invalid credentials",
 				},
 			},
 		}
@@ -113,7 +114,7 @@ func (m *mockUpstream) executeUpstreamLogin(ctx context.Context, requestData map
 
 type mockValidator struct{}
 
-func (m *mockValidator) HasAccess(requestData map[string]interface{}, upstreamResponse UpstreamResponse) ValidatorResult {
+func (m *mockValidator) HasAccess(requestData map[string]interface{}, upstreamResponse UpstreamResponseSuccess) ValidatorResult {
 	if requestData["user"] == "jane.doe" {
 		return Deny()
 	} else {

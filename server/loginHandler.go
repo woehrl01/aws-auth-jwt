@@ -24,9 +24,19 @@ type upstream interface {
 
 type UpstreamResponse struct {
 	LoginSucceeded bool
-	Data           map[string]interface{}
-	ErrorMessage   string
-	DisplayName    string
+	Success        UpstreamResponseSuccess
+	Error          UpstreamResponseError
+}
+
+type UpstreamResponseSuccess struct {
+	DisplayName string `json:"display_name"`
+	Arn         string `json:"canonical_arn"`
+	AccountId   string `json:"account_id"`
+	UserId      string `json:"client_user_id"`
+}
+
+type UpstreamResponseError struct {
+	ErrorMessage string
 }
 
 func (h *loginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -66,15 +76,15 @@ func (h *loginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// We do this by calling the HasAccess method of the AccessValidator. The current implementation of the
 	// AccessValidator is using the Open Policy Agent (OPA) to validate the access.
 	if !upstreamResponse.LoginSucceeded {
-		handleFailedLogin(upstreamResponse, w)
-	} else if validationResult := h.validator.HasAccess(requestData, upstreamResponse); validationResult.Allowed {
-		handleSuccessfulLogin(upstreamResponse, w, requestData, h.keyMaterial, validationResult.AdditionalClaims)
+		handleFailedLogin(upstreamResponse.Error, w)
+	} else if validationResult := h.validator.HasAccess(requestData, upstreamResponse.Success); validationResult.Allowed {
+		handleSuccessfulLogin(upstreamResponse.Success, w, requestData, h.keyMaterial, validationResult.AdditionalClaims)
 	} else {
-		handleFailedLogin(upstreamResponse, w)
+		handleFailedLogin(upstreamResponse.Error, w)
 	}
 }
 
-func handleFailedLogin(upstreamResponse UpstreamResponse, w http.ResponseWriter) {
+func handleFailedLogin(upstreamResponse UpstreamResponseError, w http.ResponseWriter) {
 	failedLoginsTotal.Inc()
 	log.Info("Login failed")
 
@@ -85,7 +95,7 @@ func handleFailedLogin(upstreamResponse UpstreamResponse, w http.ResponseWriter)
 	}
 }
 
-func handleSuccessfulLogin(upstreamResponse UpstreamResponse, w http.ResponseWriter, requestData map[string]interface{}, keyMaterial *keyMaterialPrivate, claims map[string]interface{}) {
+func handleSuccessfulLogin(upstreamResponse UpstreamResponseSuccess, w http.ResponseWriter, requestData map[string]interface{}, keyMaterial *keyMaterialPrivate, claims map[string]interface{}) {
 	audience := "generic"
 	if requestData["audience"] != nil {
 		audience = requestData["audience"].(string)
@@ -96,20 +106,18 @@ func handleSuccessfulLogin(upstreamResponse UpstreamResponse, w http.ResponseWri
 	log.Info("Login successful")
 
 	jwtClaims := jwt.MapClaims{
-		"sub":          upstreamResponse.Data["canonical_arn"],
+		"sub":          upstreamResponse.Arn,
 		"iss":          settings.issuer,
 		"aud":          audience,
 		"azp":          audience,
-		"account_id":   upstreamResponse.Data["account_id"],
-		"user_id":      upstreamResponse.Data["client_user_id"],
+		"account_id":   upstreamResponse.AccountId,
+		"user_id":      upstreamResponse.UserId,
 		"display_name": upstreamResponse.DisplayName,
 		"kid":          keyMaterial.keyID,
 		"iat":          time.Now().Unix(),
 		"exp":          time.Now().Add(time.Hour * time.Duration(settings.tokenExpirationHours)).Unix(),
 		"nbf":          time.Now().Unix(),
 	}
-
-	log.Debugf("Claims: %v", upstreamResponse.Data)
 
 	// Add custom claims
 	for key, value := range claims {

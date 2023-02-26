@@ -132,12 +132,10 @@ func TestAccessValidatior_HasAccess(t *testing.T) {
 			}
 
 			requestData := tc.requestData
-			upstreamResponse := UpstreamResponse{
-				Data: map[string]interface{}{
-					"canonical_arn":  "arn:aws:iam::123456789012:role/role-name",
-					"account_id":     "123456789012",
-					"client_user_id": "AIDAJQABLZS4A3QDU576Q",
-				},
+			upstreamResponse := UpstreamResponseSuccess{
+				Arn:       "arn:aws:sts::123456789012:assumed-role/role-name/role-session-name",
+				AccountId: "123456789012",
+				UserId:    "AIDAJQABLZS4A3QDU576Q",
 			}
 			result := v.HasAccess(requestData, upstreamResponse)
 			if result.Allowed != tc.expectedResult {

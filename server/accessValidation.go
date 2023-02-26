@@ -16,7 +16,7 @@ type AccessValidatior struct {
 }
 
 type validator interface {
-	HasAccess(requestData map[string]interface{}, upstreamResponse UpstreamResponse) ValidatorResult
+	HasAccess(requestData map[string]interface{}, upstreamResponse UpstreamResponseSuccess) ValidatorResult
 }
 
 type ValidatorResult struct {
@@ -101,7 +101,7 @@ func NewAccessValidatorFromDefault() *AccessValidatior {
 	`))
 }
 
-func (v *AccessValidatior) HasAccess(requestData map[string]interface{}, upstreamResponse UpstreamResponse) ValidatorResult {
+func (v *AccessValidatior) HasAccess(requestData map[string]interface{}, upstreamResponse UpstreamResponseSuccess) ValidatorResult {
 	defer measureTime(policyEvaluationDuration)
 
 	input := buildValidationInput(requestData, upstreamResponse)
@@ -126,7 +126,7 @@ func (v *AccessValidatior) HasAccess(requestData map[string]interface{}, upstrea
 	}
 }
 
-func buildValidationInput(requestData map[string]interface{}, upstreamResponse UpstreamResponse) map[string]interface{} {
+func buildValidationInput(requestData map[string]interface{}, upstreamResponse UpstreamResponseSuccess) map[string]interface{} {
 	inputRequested := map[string]interface{}{}
 	for key, value := range requestData {
 		switch key {
@@ -140,9 +140,9 @@ func buildValidationInput(requestData map[string]interface{}, upstreamResponse U
 	input := map[string]interface{}{
 		"requested": inputRequested,
 		"sts": map[string]interface{}{
-			"arn":        upstreamResponse.Data["canonical_arn"],
-			"account_id": upstreamResponse.Data["account_id"],
-			"user_id":    upstreamResponse.Data["client_user_id"],
+			"arn":        upstreamResponse.Arn,
+			"account_id": upstreamResponse.AccountId,
+			"user_id":    upstreamResponse.UserId,
 		},
 	}
 

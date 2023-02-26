@@ -46,8 +46,12 @@ func (u *vaultUpstream) executeUpstreamLogin(ctx context.Context, requestData ma
 	if isSuccessfulLogin(upstreamResponse) {
 		return UpstreamResponse{
 			LoginSucceeded: true,
-			Data:           upstreamResponse.Auth.InternalData,
-			DisplayName:    upstreamResponse.Auth.DisplayName,
+			Success: UpstreamResponseSuccess{
+				Arn:         upstreamResponse.Auth.InternalData["canonical_arn"].(string),
+				AccountId:   upstreamResponse.Auth.InternalData["account_id"].(string),
+				UserId:      upstreamResponse.Auth.InternalData["client_user_id"].(string),
+				DisplayName: upstreamResponse.Auth.DisplayName,
+			},
 		}
 	} else {
 		errorMessage := ""
@@ -57,7 +61,9 @@ func (u *vaultUpstream) executeUpstreamLogin(ctx context.Context, requestData ma
 
 		return UpstreamResponse{
 			LoginSucceeded: false,
-			ErrorMessage:   errorMessage,
+			Error: UpstreamResponseError{
+				ErrorMessage: errorMessage,
+			},
 		}
 	}
 }
