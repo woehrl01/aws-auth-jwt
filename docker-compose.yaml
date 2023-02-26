@@ -4,3 +4,12 @@ services:
     build: .
     ports:
       - "8081:8081"
+
+  server_config:
+    build: .
+    ports:
+      - "8081:8081"
+    environment:
+      - OPA_POLICY_FOLDER=/policy/
+    volumes:
+      - ./test_policies:/policy

@@ -39,7 +39,7 @@ func NewAccessValidatorInternal(moduleLoader func(r *rego.Rego)) *AccessValidati
 	query, err := rego.New(
 		rego.Query(`
 		allow = data.awsauthjwt.authz.allow; 
-		claims = data.awsauthjwt.authz.claims;
+		claims = data.awsauthjwt.authz.claims
 		`),
 		moduleLoader,
 	).PrepareForEval(ctx)

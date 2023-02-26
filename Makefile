@@ -2,7 +2,11 @@
 
 server:
 	@echo "Starting server..."
-	@docker-compose up --build
+	@docker-compose up server --build
+
+server_config:
+	@echo "Starting server with config..."
+	@docker-compose up server_config --build
 
 client:
 	@echo "Execute client..."
