@@ -23,3 +23,7 @@ format:
 test:
 	@echo "Run tests..."
 	@go test -v ./...
+
+deps:
+	@echo "Install dependencies..."
+	@go mod download
