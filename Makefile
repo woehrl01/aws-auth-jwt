@@ -15,3 +15,7 @@ client:
 jwks:
 	@echo "Fetch JWKS..."
 	@curl -s http://localhost:8081/.well-known/jwks.json | jq .
+
+format:
+	@echo "Format code..."
+	@go fmt ./...

@@ -11,6 +11,7 @@ services:
       - "8081:8081"
     environment:
       - OPA_POLICY_FOLDER=/policy/
+      - LOG_LEVEL=debug
     volumes:
       - ./test_policies:/policy
       - ./test_policies:/policy/subdir

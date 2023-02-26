@@ -8,6 +8,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/open-policy-agent/opa/rego"
+	"github.com/open-policy-agent/opa/topdown/print"
 )
 
 type AccessValidatior struct {
@@ -33,8 +34,17 @@ func Allow(claims map[string]interface{}) ValidatorResult {
 	}
 }
 
+type regoLogWrapper struct{}
+
+func (l regoLogWrapper) Print(ctx print.Context, s string) error {
+	log.WithFields(log.Fields{"location": ctx.Location}).Debug(s)
+	return nil
+}
+
 func NewAccessValidatorInternal(moduleLoader func(r *rego.Rego)) *AccessValidatior {
 	ctx := context.Background()
+
+	logWrapper := &regoLogWrapper{}
 
 	query, err := rego.New(
 		rego.Query(`
@@ -42,6 +52,8 @@ func NewAccessValidatorInternal(moduleLoader func(r *rego.Rego)) *AccessValidati
 		claims = data.awsauthjwt.authz.claims
 		`),
 		moduleLoader,
+		rego.EnablePrintStatements(settings.getLogLevel() == log.DebugLevel),
+		rego.PrintHook(logWrapper),
 	).PrepareForEval(ctx)
 
 	if err != nil {
@@ -67,6 +79,10 @@ func NewAccessValidatorFromFile(filePath string) *AccessValidatior {
 	log.Infof("Load rego policy from file: %s", filePath)
 
 	onlyFirstLevel := func(abspath string, info fs.FileInfo, depth int) bool {
+		// we only want to load the first level of the directory
+		// because in a kube environment, the directory is a symlink
+		// and we don't want to load the symlinked files as this would
+		// cause loading the same file twice
 		return depth > 1 // return true to skip the path
 	}
 
@@ -90,7 +106,7 @@ func (v *AccessValidatior) HasAccess(requestData map[string]interface{}, upstrea
 	input := buildValidationInput(requestData, upstreamResponse)
 
 	results, err := v.rego.Eval(v.context, rego.EvalInput(input))
-	
+
 	if err != nil || len(results) == 0 {
 		log.Warnf("Failed to evaluate policy: %v", err)
 		return Deny()
