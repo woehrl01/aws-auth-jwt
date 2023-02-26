@@ -49,9 +49,9 @@ func startServer() {
 	}
 
 	loginHandler := &loginHandler{
-		keyMaterial:   &keyMaterial.private,
-		vaultUpstream: NewVaultUpstream(),
-		validator:     NewAccessValidator(),
+		keyMaterial: &keyMaterial.private,
+		upstream:    NewVaultUpstream(),
+		validator:   NewAccessValidator(),
 	}
 
 	wellKnownHandler := &wellKnownHandler{

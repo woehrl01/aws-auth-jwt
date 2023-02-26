@@ -23,7 +23,7 @@ type awsRoleEntry struct {
 	AuthType string `json:"auth_type"` // Type of authentication to use
 }
 
-func setupConfig() *logical.InmemStorage {
+func setupVaultUpstreamConfig() *logical.InmemStorage {
 	context := context.Background()
 	storage := &logical.InmemStorage{}
 
@@ -36,7 +36,7 @@ func setupConfig() *logical.InmemStorage {
 
 	// Add a role to the storage
 	role := awsRoleEntry{
-		Version:  3, // we need to set the version to 3, because the server expects a version 3
+		Version:  3,     // we need to set the version to 3, because the server expects a version 3
 		AuthType: "iam", // we need to set the auth type to "iam", in order to enable the login for AWS IAM
 	}
 	roleEntry, _ := logical.StorageEntryJSON("role/generic", role)

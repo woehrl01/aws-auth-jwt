@@ -4,7 +4,6 @@ import (
 	"context"
 	"io/fs"
 
-	"github.com/hashicorp/vault/sdk/logical"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/open-policy-agent/opa/rego"
@@ -17,7 +16,7 @@ type AccessValidatior struct {
 }
 
 type validator interface {
-	HasAccess(requestData map[string]interface{}, upstreamResponse *logical.Response) ValidatorResult
+	HasAccess(requestData map[string]interface{}, upstreamResponse UpstreamResponse) ValidatorResult
 }
 
 type ValidatorResult struct {
@@ -102,7 +101,7 @@ func NewAccessValidatorFromDefault() *AccessValidatior {
 	`))
 }
 
-func (v *AccessValidatior) HasAccess(requestData map[string]interface{}, upstreamResponse *logical.Response) ValidatorResult {
+func (v *AccessValidatior) HasAccess(requestData map[string]interface{}, upstreamResponse UpstreamResponse) ValidatorResult {
 	defer measureTime(policyEvaluationDuration)
 
 	input := buildValidationInput(requestData, upstreamResponse)
@@ -127,7 +126,7 @@ func (v *AccessValidatior) HasAccess(requestData map[string]interface{}, upstrea
 	}
 }
 
-func buildValidationInput(requestData map[string]interface{}, upstreamResponse *logical.Response) map[string]interface{} {
+func buildValidationInput(requestData map[string]interface{}, upstreamResponse UpstreamResponse) map[string]interface{} {
 	inputRequested := map[string]interface{}{}
 	for key, value := range requestData {
 		switch key {
@@ -141,9 +140,9 @@ func buildValidationInput(requestData map[string]interface{}, upstreamResponse *
 	input := map[string]interface{}{
 		"requested": inputRequested,
 		"sts": map[string]interface{}{
-			"arn":        upstreamResponse.Auth.InternalData["canonical_arn"],
-			"account_id": upstreamResponse.Auth.InternalData["account_id"],
-			"user_id":    upstreamResponse.Auth.InternalData["client_user_id"],
+			"arn":        upstreamResponse.Data["canonical_arn"],
+			"account_id": upstreamResponse.Data["account_id"],
+			"user_id":    upstreamResponse.Data["client_user_id"],
 		},
 	}
 

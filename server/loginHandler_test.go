@@ -8,32 +8,30 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hashicorp/vault/sdk/logical"
 	log "github.com/sirupsen/logrus"
 )
 
 func TestLoginHandler_ServeHTTP(t *testing.T) {
 	private, public, _ := getPrivateKeysGenerated()
 	keys, _ := getKeyMaterialFromKeys(private, public)
-	
+
 	var buf bytes.Buffer
 	log.SetOutput(&buf)
 
 	h := &loginHandler{
-		vaultUpstream: &mockUpstream{},
-		validator:     &mockValidator{},
-		keyMaterial:   &keys.private,
+		upstream:    &mockUpstream{},
+		validator:   &mockValidator{},
+		keyMaterial: &keys.private,
 	}
 
 	t.Run("Test with valid input", func(t *testing.T) {
-		h.vaultUpstream = &mockUpstream{
-			response: &logical.Response{
-				Auth: &logical.Auth{
-					InternalData: map[string]interface{}{
-						"canonical_arn":  "arn:aws:iam::123456789012:role/role-name",
-						"account_id":     "123456789012",
-						"client_user_id": "AIDAJQABLZS4A3QDU576Q",
-					},
+		h.upstream = &mockUpstream{
+			response: UpstreamResponse{
+				LoginSucceeded: true,
+				Data: map[string]interface{}{
+					"canonical_arn":  "arn:aws:iam::123456789012:role/role-name",
+					"account_id":     "123456789012",
+					"client_user_id": "AIDAJQABLZS4A3QDU576Q",
 				},
 			},
 		}
@@ -75,6 +73,7 @@ func TestLoginHandler_ServeHTTP(t *testing.T) {
 			t.Errorf("Unexpected status code: %d", w.Result().StatusCode)
 		}
 	})
+
 	t.Run("Test with invalid input (denied by validator)", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPut, "/login", strings.NewReader(`{"user": "jane.doe"}`))
 		req.Header.Set("Content-Type", "application/json")
@@ -86,8 +85,9 @@ func TestLoginHandler_ServeHTTP(t *testing.T) {
 	})
 
 	t.Run("Test with invalid input (failed upstream login)", func(t *testing.T) {
-		h.vaultUpstream = &mockUpstream{
-			response: &logical.Response{
+		h.upstream = &mockUpstream{
+			response: UpstreamResponse{
+				LoginSucceeded: false,
 				Data: map[string]interface{}{
 					"error": "invalid credentials",
 				},
@@ -104,16 +104,16 @@ func TestLoginHandler_ServeHTTP(t *testing.T) {
 }
 
 type mockUpstream struct {
-	response *logical.Response
+	response UpstreamResponse
 }
 
-func (m *mockUpstream) executeUpstreamLogin(ctx context.Context, requestData map[string]interface{}) *logical.Response {
+func (m *mockUpstream) executeUpstreamLogin(ctx context.Context, requestData map[string]interface{}) UpstreamResponse {
 	return m.response
 }
 
 type mockValidator struct{}
 
-func (m *mockValidator) HasAccess(requestData map[string]interface{}, upstreamResponse *logical.Response) ValidatorResult {
+func (m *mockValidator) HasAccess(requestData map[string]interface{}, upstreamResponse UpstreamResponse) ValidatorResult {
 	if requestData["user"] == "jane.doe" {
 		return Deny()
 	} else {

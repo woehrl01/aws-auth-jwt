@@ -5,7 +5,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/open-policy-agent/opa/rego"
 	log "github.com/sirupsen/logrus"
 )
@@ -13,7 +12,7 @@ import (
 func TestAccessValidatior_HasAccess(t *testing.T) {
 	var buf bytes.Buffer
 	log.SetOutput(&buf)
-	
+
 	testCases := []struct {
 		name string
 		// The input data for the rego query
@@ -133,13 +132,11 @@ func TestAccessValidatior_HasAccess(t *testing.T) {
 			}
 
 			requestData := tc.requestData
-			upstreamResponse := &logical.Response{
-				Auth: &logical.Auth{
-					InternalData: map[string]interface{}{
-						"canonical_arn":  "arn:aws:iam::123456789012:role/role-name",
-						"account_id":     "123456789012",
-						"client_user_id": "AIDAJQABLZS4A3QDU576Q",
-					},
+			upstreamResponse := UpstreamResponse{
+				Data: map[string]interface{}{
+					"canonical_arn":  "arn:aws:iam::123456789012:role/role-name",
+					"account_id":     "123456789012",
+					"client_user_id": "AIDAJQABLZS4A3QDU576Q",
 				},
 			}
 			result := v.HasAccess(requestData, upstreamResponse)
