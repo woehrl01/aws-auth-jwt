@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"net/http"
 	"net/http/httptest"
@@ -8,11 +9,15 @@ import (
 	"testing"
 
 	"github.com/hashicorp/vault/sdk/logical"
+	log "github.com/sirupsen/logrus"
 )
 
 func TestLoginHandler_ServeHTTP(t *testing.T) {
 	private, public, _ := getPrivateKeysGenerated()
 	keys, _ := getKeyMaterialFromKeys(private, public)
+	
+	var buf bytes.Buffer
+	log.SetOutput(&buf)
 
 	h := &loginHandler{
 		vaultUpstream: &mockUpstream{},

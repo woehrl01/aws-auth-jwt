@@ -1,14 +1,19 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"testing"
 
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/open-policy-agent/opa/rego"
+	log "github.com/sirupsen/logrus"
 )
 
 func TestAccessValidatior_HasAccess(t *testing.T) {
+	var buf bytes.Buffer
+	log.SetOutput(&buf)
+	
 	testCases := []struct {
 		name string
 		// The input data for the rego query
