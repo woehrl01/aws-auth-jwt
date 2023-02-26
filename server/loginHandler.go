@@ -24,8 +24,8 @@ type upstream interface {
 
 type UpstreamResponse struct {
 	LoginSucceeded bool
-	Success        UpstreamResponseSuccess
-	Error          UpstreamResponseError
+	Success        *UpstreamResponseSuccess
+	Error          *UpstreamResponseError
 }
 
 type UpstreamResponseSuccess struct {
@@ -84,18 +84,18 @@ func (h *loginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func handleFailedLogin(upstreamResponse UpstreamResponseError, w http.ResponseWriter) {
+func handleFailedLogin(upstreamResponse *UpstreamResponseError, w http.ResponseWriter) {
 	failedLoginsTotal.Inc()
 	log.Info("Login failed")
 
 	w.WriteHeader(http.StatusUnauthorized)
 
-	if upstreamResponse.ErrorMessage != "" {
+	if upstreamResponse != nil && upstreamResponse.ErrorMessage != "" {
 		log.Infof("Error: %s", upstreamResponse.ErrorMessage)
 	}
 }
 
-func handleSuccessfulLogin(upstreamResponse UpstreamResponseSuccess, w http.ResponseWriter, requestData map[string]interface{}, keyMaterial *keyMaterialPrivate, claims map[string]interface{}) {
+func handleSuccessfulLogin(upstreamResponse *UpstreamResponseSuccess, w http.ResponseWriter, requestData map[string]interface{}, keyMaterial *keyMaterialPrivate, claims map[string]interface{}) {
 	audience := "generic"
 	if requestData["audience"] != nil {
 		audience = requestData["audience"].(string)

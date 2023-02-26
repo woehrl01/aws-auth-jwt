@@ -132,7 +132,7 @@ func TestAccessValidatior_HasAccess(t *testing.T) {
 			}
 
 			requestData := tc.requestData
-			upstreamResponse := UpstreamResponseSuccess{
+			upstreamResponse := &UpstreamResponseSuccess{
 				Arn:       "arn:aws:sts::123456789012:assumed-role/role-name/role-session-name",
 				AccountId: "123456789012",
 				UserId:    "AIDAJQABLZS4A3QDU576Q",

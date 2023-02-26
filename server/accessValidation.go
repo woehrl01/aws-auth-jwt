@@ -16,7 +16,7 @@ type AccessValidatior struct {
 }
 
 type validator interface {
-	HasAccess(requestData map[string]interface{}, upstreamResponse UpstreamResponseSuccess) ValidatorResult
+	HasAccess(requestData map[string]interface{}, upstreamResponse *UpstreamResponseSuccess) ValidatorResult
 }
 
 type ValidatorResult struct {
@@ -101,7 +101,7 @@ func NewAccessValidatorFromDefault() *AccessValidatior {
 	`))
 }
 
-func (v *AccessValidatior) HasAccess(requestData map[string]interface{}, upstreamResponse UpstreamResponseSuccess) ValidatorResult {
+func (v *AccessValidatior) HasAccess(requestData map[string]interface{}, upstreamResponse *UpstreamResponseSuccess) ValidatorResult {
 	defer measureTime(policyEvaluationDuration)
 
 	input := buildValidationInput(requestData, upstreamResponse)
@@ -126,7 +126,7 @@ func (v *AccessValidatior) HasAccess(requestData map[string]interface{}, upstrea
 	}
 }
 
-func buildValidationInput(requestData map[string]interface{}, upstreamResponse UpstreamResponseSuccess) map[string]interface{} {
+func buildValidationInput(requestData map[string]interface{}, upstreamResponse *UpstreamResponseSuccess) map[string]interface{} {
 	inputRequested := map[string]interface{}{}
 	for key, value := range requestData {
 		switch key {
