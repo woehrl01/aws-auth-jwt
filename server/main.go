@@ -58,8 +58,8 @@ func startServer() {
 		keyMaterial: &keyMaterial.public,
 	}
 
-	http.HandleFunc("/v1/auth/aws/login", loginHandler.Handler())
-	http.HandleFunc("/.well-known/jwks.json", wellKnownHandler.Handler())
+	http.Handle("/v1/auth/aws/login", loginHandler)
+	http.Handle("/.well-known/jwks.json", wellKnownHandler)
 	http.Handle("/metrics", promhttp.Handler())
 	http.Handle("/healthz", healthcheck.Handler(healthcheck.WithTimeout(5*time.Second)))
 

@@ -115,49 +115,47 @@ func (u *vaultUpstream) executeUpstreamLogin(ctx context.Context, requestData ma
 	return upstreamResponse
 }
 
-func (h *loginHandler) Handler() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		log.Debug("Received request: %s", r.URL.Path)
-		loginRequestsTotal.Inc()
+func (h *loginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	log.Debug("Received request: %s", r.URL.Path)
+	loginRequestsTotal.Inc()
 
-		// Check if the request is a PUT
-		if r.Method != "PUT" {
+	// Check if the request is a PUT
+	if r.Method != "PUT" {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Check if the Content-Type is application/json
+	if r.Header.Get("Content-Type") != "" {
+		value, _ := header.ParseValueAndParams(r.Header, "Content-Type")
+		if value != "application/json" {
 			http.NotFound(w, r)
 			return
 		}
+	}
 
-		// Check if the Content-Type is application/json
-		if r.Header.Get("Content-Type") != "" {
-			value, _ := header.ParseValueAndParams(r.Header, "Content-Type")
-			if value != "application/json" {
-				http.NotFound(w, r)
-				return
-			}
-		}
+	// Limit the request body to 1MB
+	r.Body = http.MaxBytesReader(w, r.Body, 1048576)
 
-		// Limit the request body to 1MB
-		r.Body = http.MaxBytesReader(w, r.Body, 1048576)
+	// Decode the request body into a map
+	var requestData map[string]interface{}
+	err := json.NewDecoder(r.Body).Decode(&requestData)
+	if err != nil {
+		msg := "Request body could not be decoded into JSON"
+		http.Error(w, msg, http.StatusBadRequest)
+		return
+	}
 
-		// Decode the request body into a map
-		var requestData map[string]interface{}
-		err := json.NewDecoder(r.Body).Decode(&requestData)
-		if err != nil {
-			msg := "Request body could not be decoded into JSON"
-			http.Error(w, msg, http.StatusBadRequest)
-			return
-		}
+	upstreamResponse := h.vaultUpstream.executeUpstreamLogin(r.Context(), requestData)
 
-		upstreamResponse := h.vaultUpstream.executeUpstreamLogin(r.Context(), requestData)
-
-		// In case that the login was successful to AWS STS we need to check if the user has access to receive a JWT token
-		// We do this by calling the HasAccess method of the AccessValidator. The current implementation of the
-		// AccessValidator is using the Open Policy Agent (OPA) to validate the access.
-		if upstreamResponse.IsError() {
-			handleFailedLogin(upstreamResponse, w)
-		} else if validationResult := h.validator.HasAccess(requestData, upstreamResponse); validationResult.Allow {
-			handleSuccessfulLogin(upstreamResponse, w, requestData, h.keyMaterial, validationResult.Claims)
-		} else {
-			handleFailedLogin(upstreamResponse, w)
-		}
+	// In case that the login was successful to AWS STS we need to check if the user has access to receive a JWT token
+	// We do this by calling the HasAccess method of the AccessValidator. The current implementation of the
+	// AccessValidator is using the Open Policy Agent (OPA) to validate the access.
+	if upstreamResponse.IsError() {
+		handleFailedLogin(upstreamResponse, w)
+	} else if validationResult := h.validator.HasAccess(requestData, upstreamResponse); validationResult.Allow {
+		handleSuccessfulLogin(upstreamResponse, w, requestData, h.keyMaterial, validationResult.Claims)
+	} else {
+		handleFailedLogin(upstreamResponse, w)
 	}
 }
