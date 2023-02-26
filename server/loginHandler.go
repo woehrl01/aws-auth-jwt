@@ -26,7 +26,10 @@ func handleFailedLogin(upstreamResponse *logical.Response, w http.ResponseWriter
 }
 
 func handleSuccessfulLogin(upstreamResponse *logical.Response, w http.ResponseWriter, requestData map[string]interface{}, keyMaterial *keyMaterialPrivate, claims map[string]interface{}) {
-	requestedRole := requestData["role"].(string)
+	requestedRole := "default"
+	if requestData["role"] != nil {
+		requestedRole = requestData["role"].(string)
+	}
 	successfulLoginsTotal.WithLabelValues(requestedRole).Inc()
 	log.Info("Login successful")
 
@@ -72,8 +75,12 @@ func handleSuccessfulLogin(upstreamResponse *logical.Response, w http.ResponseWr
 
 type loginHandler struct {
 	keyMaterial   *keyMaterialPrivate
-	vaultUpstream *vaultUpstream
-	validator     *AccessValidatior
+	vaultUpstream upstream
+	validator     validator
+}
+
+type upstream interface {
+	executeUpstreamLogin(ctx context.Context, requestData map[string]interface{}) *logical.Response
 }
 
 type vaultUpstream struct {
@@ -116,7 +123,7 @@ func (u *vaultUpstream) executeUpstreamLogin(ctx context.Context, requestData ma
 }
 
 func (h *loginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	log.Debug("Received request: %s", r.URL.Path)
+	log.Debugf("Received request: %s", r.URL.Path)
 	loginRequestsTotal.Inc()
 
 	// Check if the request is a PUT
@@ -151,11 +158,31 @@ func (h *loginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// In case that the login was successful to AWS STS we need to check if the user has access to receive a JWT token
 	// We do this by calling the HasAccess method of the AccessValidator. The current implementation of the
 	// AccessValidator is using the Open Policy Agent (OPA) to validate the access.
-	if upstreamResponse.IsError() {
+	if IsFailedLogin(upstreamResponse) {
 		handleFailedLogin(upstreamResponse, w)
-	} else if validationResult := h.validator.HasAccess(requestData, upstreamResponse); validationResult.Allow {
-		handleSuccessfulLogin(upstreamResponse, w, requestData, h.keyMaterial, validationResult.Claims)
+	} else if validationResult := h.validator.HasAccess(requestData, upstreamResponse); validationResult.Allowed {
+		handleSuccessfulLogin(upstreamResponse, w, requestData, h.keyMaterial, validationResult.AdditionalClaims)
 	} else {
 		handleFailedLogin(upstreamResponse, w)
 	}
+}
+
+func IsFailedLogin(response *logical.Response) bool {
+	if response == nil {
+		return true
+	}
+
+	if response.IsError() {
+		return true
+	}
+
+	if response.Auth == nil {
+		return true
+	}
+
+	if response.Auth.InternalData == nil {
+		return true
+	}
+
+	return false
 }

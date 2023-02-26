@@ -92,14 +92,7 @@ type keyMaterialPrivate struct {
 	keyID string
 }
 
-func getKeyMaterial() (*keyMaterial, error) {
-
-	pemDataPrivate, pemDataPublic, err := getPrivateKeys()
-	if err != nil {
-		log.Fatalf("Could not get private keys: %s", err)
-		return nil, err
-	}
-
+func getKeyMaterialFromKeys(pemDataPrivate []byte, pemDataPublic []byte) (*keyMaterial, error) {
 	privateKey, err := jwt.ParseRSAPrivateKeyFromPEM(pemDataPrivate)
 	if err != nil {
 		log.Fatalf("Error parsing private key: %s", err)
@@ -127,4 +120,16 @@ func getKeyMaterial() (*keyMaterial, error) {
 			keyID: kid,
 		},
 	}, nil
+}
+
+func getKeyMaterial() (*keyMaterial, error) {
+
+	pemDataPrivate, pemDataPublic, err := getPrivateKeys()
+
+	if err != nil {
+		log.Fatalf("Could not get private keys: %s", err)
+		return nil, err
+	}
+
+	return getKeyMaterialFromKeys(pemDataPrivate, pemDataPublic)
 }

@@ -19,3 +19,7 @@ jwks:
 format:
 	@echo "Format code..."
 	@go fmt ./...
+
+test:
+	@echo "Run tests..."
+	@go test -v ./...

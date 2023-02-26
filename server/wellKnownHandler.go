@@ -15,7 +15,7 @@ type wellKnownHandler struct {
 
 func (h *wellKnownHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	jwksTotal.Inc()
-	log.Debug("Received request: %s", r.URL.Path)
+	log.Debugf("Received request: %s", r.URL.Path)
 
 	// Check if the request is a GET
 	if r.Method != "GET" {

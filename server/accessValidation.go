@@ -16,21 +16,25 @@ type AccessValidatior struct {
 	context context.Context
 }
 
+type validator interface {
+	HasAccess(requestData map[string]interface{}, upstreamResponse *logical.Response) ValidatorResult
+}
+
 type ValidatorResult struct {
-	Allow  bool
-	Claims map[string]interface{}
+	Allowed          bool
+	AdditionalClaims map[string]interface{}
 }
 
 func Deny() ValidatorResult {
 	return ValidatorResult{
-		Allow: false,
+		Allowed: false,
 	}
 }
 
 func Allow(claims map[string]interface{}) ValidatorResult {
 	return ValidatorResult{
-		Allow:  true,
-		Claims: claims,
+		Allowed:          true,
+		AdditionalClaims: claims,
 	}
 }
 
