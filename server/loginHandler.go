@@ -30,7 +30,7 @@ type UpstreamResponse struct {
 
 type UpstreamResponseSuccess struct {
 	DisplayName string `json:"display_name"`
-	Arn         string `json:"canonical_arn"`
+	RoleArn     string `json:"canonical_arn"`
 	AccountId   string `json:"account_id"`
 	UserId      string `json:"client_user_id"`
 }
@@ -80,7 +80,9 @@ func (h *loginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	} else if validationResult := h.validator.HasAccess(requestData, upstreamResponse.Success); validationResult.Allowed {
 		handleSuccessfulLogin(upstreamResponse.Success, w, requestData, h.keyMaterial, validationResult.AdditionalClaims)
 	} else {
-		handleFailedLogin(upstreamResponse.Error, w)
+		handleFailedLogin(&UpstreamResponseError{
+			ErrorMessage: "User is not allowed to receive a JWT token based on policy evaluation",
+		}, w)
 	}
 }
 
@@ -106,7 +108,7 @@ func handleSuccessfulLogin(upstreamResponse *UpstreamResponseSuccess, w http.Res
 	log.Info("Login successful")
 
 	jwtClaims := jwt.MapClaims{
-		"sub":          upstreamResponse.Arn,
+		"sub":          upstreamResponse.RoleArn,
 		"iss":          settings.issuer,
 		"aud":          audience,
 		"azp":          audience,

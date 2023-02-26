@@ -30,7 +30,7 @@ func TestLoginHandler_ServeHTTP(t *testing.T) {
 				LoginSucceeded: true,
 				Success: &UpstreamResponseSuccess{
 					DisplayName: "John Doe",
-					Arn:         "arn:aws:iam::123456789012:role/role-name",
+					RoleArn:     "arn:aws:iam::123456789012:role/role-name",
 					AccountId:   "123456789012",
 					UserId:      "AIDAJQABLZS4A3QDU576Q",
 				},

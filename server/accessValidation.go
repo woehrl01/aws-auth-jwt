@@ -140,7 +140,7 @@ func buildValidationInput(requestData map[string]interface{}, upstreamResponse *
 	input := map[string]interface{}{
 		"requested": inputRequested,
 		"sts": map[string]interface{}{
-			"arn":        upstreamResponse.Arn,
+			"arn":        upstreamResponse.RoleArn,
 			"account_id": upstreamResponse.AccountId,
 			"user_id":    upstreamResponse.UserId,
 		},

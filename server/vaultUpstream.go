@@ -47,7 +47,7 @@ func (u *vaultUpstream) executeUpstreamLogin(ctx context.Context, requestData ma
 		return UpstreamResponse{
 			LoginSucceeded: true,
 			Success: &UpstreamResponseSuccess{
-				Arn:         upstreamResponse.Auth.InternalData["canonical_arn"].(string),
+				RoleArn:     upstreamResponse.Auth.InternalData["canonical_arn"].(string),
 				AccountId:   upstreamResponse.Auth.InternalData["account_id"].(string),
 				UserId:      upstreamResponse.Auth.InternalData["client_user_id"].(string),
 				DisplayName: upstreamResponse.Auth.DisplayName,
