@@ -107,6 +107,16 @@ func TestAccessValidatior_HasAccess(t *testing.T) {
 			expectedResult: true,
 			expectedClaims: map[string]interface{}{},
 		},
+		{
+			name: "Invalid allow",
+			rule: `
+				allow = "foo"
+				claims = {"foo": "bar"}
+			`,
+			requestData:    map[string]interface{}{},
+			expectedResult: false,
+			expectedClaims: map[string]interface{}{},
+		},
 	}
 
 	for _, tc := range testCases {

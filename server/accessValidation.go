@@ -48,8 +48,6 @@ func (l regoLogWrapper) Print(ctx print.Context, s string) error {
 func NewAccessValidatorInternal(moduleLoader func(r *rego.Rego)) *AccessValidatior {
 	ctx := context.Background()
 
-	logWrapper := &regoLogWrapper{}
-
 	query, err := rego.New(
 		rego.Query(`
 		allow = data.awsauthjwt.authz.allow; 
@@ -57,7 +55,7 @@ func NewAccessValidatorInternal(moduleLoader func(r *rego.Rego)) *AccessValidati
 		`),
 		moduleLoader,
 		rego.EnablePrintStatements(settings.getLogLevel() == log.DebugLevel),
-		rego.PrintHook(logWrapper),
+		rego.PrintHook(&regoLogWrapper{}),
 	).PrepareForEval(ctx)
 
 	if err != nil {
