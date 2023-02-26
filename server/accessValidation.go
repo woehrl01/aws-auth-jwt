@@ -2,8 +2,8 @@ package main
 
 import (
 	"context"
-	"os"
 
+	"github.com/hashicorp/vault/sdk/logical"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/open-policy-agent/opa/rego"
@@ -32,12 +32,15 @@ func Allow(claims map[string]interface{}) ValidatorResult {
 	}
 }
 
-func NewAccessValidatorInternal(module string) *AccessValidatior {
+func NewAccessValidatorInternal(moduleLoader func(r *rego.Rego)) *AccessValidatior {
 	ctx := context.Background()
 
 	query, err := rego.New(
-		rego.Query("allow = data.awsauthjwt.authz.allow; claims = data.awsauthjwt.authz.claims"),
-		rego.Module("awsauthjwt.rego", module),
+		rego.Query(`
+		allow = data.awsauthjwt.authz.allow; 
+		claims = data.awsauthjwt.authz.claims;
+		`),
+		moduleLoader,
 	).PrepareForEval(ctx)
 
 	if err != nil {
@@ -52,43 +55,34 @@ func NewAccessValidatorInternal(module string) *AccessValidatior {
 }
 
 func NewAccessValidator() *AccessValidatior {
-	customPolicyFile := os.Getenv("OPA_POLICY_FILE")
-	if customPolicyFile != "" {
-		if _, err := os.Stat(customPolicyFile); os.IsNotExist(err) {
-			log.Fatalf("%s does not exist", customPolicyFile)
-			return nil
-		}
-		return NewAccessValidatorFromFile(customPolicyFile)
+	if settings.hasCustomPolicy() {
+		return NewAccessValidatorFromFile(settings.policyFolder)
 	} else {
 		return NewAccessValidatorFromDefault()
 	}
 }
 
 func NewAccessValidatorFromFile(filePath string) *AccessValidatior {
-	policy, err := os.ReadFile(filePath)
-	if err != nil {
-		log.Fatalf("Failed to read policy file: %v", err)
-		return nil
-	}
+	log.Infof("Load rego policy from file: %s", filePath)
 
-	log.Infof("Loaded rego policy from file: %s", filePath)
-
-	return NewAccessValidatorInternal(string(policy))
+	return NewAccessValidatorInternal(rego.Load([]string{filePath}, nil))
 }
 
 func NewAccessValidatorFromDefault() *AccessValidatior {
 	log.Infoln("Loaded default rego policy")
 
-	return NewAccessValidatorInternal(`
+	return NewAccessValidatorInternal(rego.Module("awsauthjwt.rego", `
 	package awsauthjwt.authz
 
 	default allow := true
 	default claims := {}
-	`)
+	`))
 }
 
-func (v *AccessValidatior) HasAccess(input map[string]interface{}) ValidatorResult {
+func (v *AccessValidatior) HasAccess(requestData map[string]interface{}, upstreamResponse *logical.Response) ValidatorResult {
 	defer measureTime(policyEvaluationDuration)
+
+	input := buildValidationInput(requestData, upstreamResponse)
 
 	results, err := v.rego.Eval(v.context, rego.EvalInput(input))
 	if err != nil || len(results) == 0 {
@@ -97,18 +91,37 @@ func (v *AccessValidatior) HasAccess(input map[string]interface{}) ValidatorResu
 	} else if allowResult, ok := results[0].Bindings["allow"].(bool); !ok {
 		log.Warnf("allowResult is not a bool: %v", allowResult)
 		return Deny()
+	} else if !allowResult {
+		log.Debug("Access denied by policy")
+		return Deny()
+	} else if additionalClaimsResult, ok := results[0].Bindings["claims"].(map[string]interface{}); ok {
+		log.Debugf("Access allowed by policy, additional claims: %v", additionalClaimsResult)
+		return Allow(additionalClaimsResult)
 	} else {
-		if !allowResult {
-			log.Info("Access denied by policy")
-			return Deny()
-		}
-
-		if additionalClaimsResult, ok := results[0].Bindings["claims"].(map[string]interface{}); ok {
-			log.Infof("Access allowed by policy, additional claims: %v", additionalClaimsResult)
-			return Allow(additionalClaimsResult)
-		}
-
-		log.Info("Access allowed by policy. No additional claims.")
+		log.Debug("Access allowed by policy. No additional claims.")
 		return Allow(map[string]interface{}{})
 	}
+}
+
+func buildValidationInput(requestData map[string]interface{}, upstreamResponse *logical.Response) map[string]interface{} {
+	requestedValidations := map[string]interface{}{}
+	for key, value := range requestData {
+		switch key {
+		case "iam_http_request_method", "iam_request_url", "iam_request_body", "iam_request_headers":
+			continue
+		default:
+			requestedValidations[key] = value
+		}
+	}
+
+	inputForAccessValidation := map[string]interface{}{
+		"requested": requestedValidations,
+		"sts": map[string]interface{}{
+			"arn":        upstreamResponse.Auth.InternalData["canonical_arn"],
+			"account_id": upstreamResponse.Auth.InternalData["account_id"],
+			"user_id":    upstreamResponse.Auth.InternalData["client_user_id"],
+		},
+	}
+
+	return inputForAccessValidation
 }

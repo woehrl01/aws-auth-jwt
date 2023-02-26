@@ -3,7 +3,9 @@ package main
 import (
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha256"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/pem"
 	"os"
 
@@ -17,6 +19,7 @@ func getPrivateKeysFromFile(privateKeyLocation string, publicKeyLocation string)
 		log.Error(err)
 		return nil, nil, err
 	}
+	log.Infof("Loaded private key from %s", privateKeyLocation)
 
 	pemDataPublic, err := os.ReadFile(publicKeyLocation)
 	if err != nil {
@@ -24,34 +27,13 @@ func getPrivateKeysFromFile(privateKeyLocation string, publicKeyLocation string)
 		return nil, nil, err
 	}
 
-	log.Info("Loaded private and public key from file")
+	log.Infof("Loaded public key from %s", publicKeyLocation)
 	return pemDataPrivate, pemDataPublic, nil
 }
 
 func getPrivateKeys() ([]byte, []byte, error) {
-	privateKeyLocation := "/certs/private.pem"
-	if os.Getenv("PRIVATE_KEY_FILE") != "" {
-		privateKeyLocation = os.Getenv("PRIVATE_KEY_FILE")
-	}
-
-	publicKeyLocation := "/certs/public.pem"
-	if os.Getenv("PUBLIC_KEY_FILE") != "" {
-		publicKeyLocation = os.Getenv("PUBLIC_KEY_FILE")
-	}
-
-	allFilesExist := true
-	if _, err := os.Stat(privateKeyLocation); os.IsNotExist(err) {
-		log.Info("private.pem does not exist")
-		allFilesExist = false
-	}
-
-	if _, err := os.Stat(publicKeyLocation); os.IsNotExist(err) {
-		log.Info("public.pem does not exist")
-		allFilesExist = false
-	}
-
-	if allFilesExist {
-		return getPrivateKeysFromFile(privateKeyLocation, publicKeyLocation)
+	if settings.hasCustomKeys() {
+		return getPrivateKeysFromFile(settings.privateKeyFile, settings.publicKeyFile)
 	} else {
 		return getPrivateKeysGenerated()
 	}
@@ -130,7 +112,8 @@ func getKeyMaterial() (*keyMaterial, error) {
 		return nil, err
 	}
 
-	kid := "1"
+	thumbprint := sha256.Sum256(pemDataPublic)
+	kid := base64.RawURLEncoding.EncodeToString(thumbprint[:])
 
 	return &keyMaterial{
 		private: keyMaterialPrivate{

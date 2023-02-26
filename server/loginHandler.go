@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"os"
-	"strconv"
 	"time"
 
 	"github.com/go-openapi/runtime/middleware/header"
@@ -22,10 +20,8 @@ func handleFailedLogin(upstreamResponse *logical.Response, w http.ResponseWriter
 
 	w.WriteHeader(http.StatusUnauthorized)
 
-	if upstreamResponse.Data != nil {
-		if upstreamResponse.Data["error"] != nil {
-			log.Infof("Error: %s", upstreamResponse.Data["error"].(string))
-		}
+	if upstreamResponse.Data != nil && upstreamResponse.Data["error"] != nil {
+		log.Infof("Error: %s", upstreamResponse.Data["error"].(string))
 	}
 }
 
@@ -34,19 +30,9 @@ func handleSuccessfulLogin(upstreamResponse *logical.Response, w http.ResponseWr
 	successfulLoginsTotal.WithLabelValues(requestedRole).Inc()
 	log.Info("Login successful")
 
-	issuer := "aws-auth-jwt"
-	if os.Getenv("ISSUER") != "" {
-		issuer = os.Getenv("ISSUER")
-	}
-
-	expDurationHours := 1
-	if os.Getenv("TOKEN_EXPIRATION_HOURS") != "" {
-		expDurationHours, _ = strconv.Atoi(os.Getenv("TOKEN_EXPIRATION_HOURS"))
-	}
-
 	jwtClaims := jwt.MapClaims{
 		"sub":          upstreamResponse.Auth.InternalData["canonical_arn"],
-		"iss":          issuer,
+		"iss":          settings.issuer,
 		"aud":          requestedRole,
 		"azp":          requestedRole,
 		"account_id":   upstreamResponse.Auth.InternalData["account_id"],
@@ -54,7 +40,7 @@ func handleSuccessfulLogin(upstreamResponse *logical.Response, w http.ResponseWr
 		"display_name": upstreamResponse.Auth.DisplayName,
 		"kid":          keyMaterial.keyID,
 		"iat":          time.Now().Unix(),
-		"exp":          time.Now().Add(time.Hour * time.Duration(expDurationHours)).Unix(),
+		"exp":          time.Now().Add(time.Hour * time.Duration(settings.tokenExpirationHours)).Unix(),
 		"nbf":          time.Now().Unix(),
 	}
 
@@ -168,37 +154,10 @@ func (h *loginHandler) Handler() http.HandlerFunc {
 		// AccessValidator is using the Open Policy Agent (OPA) to validate the access.
 		if upstreamResponse.IsError() {
 			handleFailedLogin(upstreamResponse, w)
+		} else if validationResult := h.validator.HasAccess(requestData, upstreamResponse); validationResult.Allow {
+			handleSuccessfulLogin(upstreamResponse, w, requestData, h.keyMaterial, validationResult.Claims)
 		} else {
-			inputForAccessValidation := buildValidationInput(requestData, upstreamResponse)
-			validationResult := h.validator.HasAccess(inputForAccessValidation)
-			if !validationResult.Allow {
-				handleFailedLogin(upstreamResponse, w)
-			} else {
-				handleSuccessfulLogin(upstreamResponse, w, requestData, h.keyMaterial, validationResult.Claims)
-			}
+			handleFailedLogin(upstreamResponse, w)
 		}
 	}
-}
-
-func buildValidationInput(requestData map[string]interface{}, upstreamResponse *logical.Response) map[string]interface{} {
-	requestedValidations := map[string]interface{}{}
-	for key, value := range requestData {
-		switch key {
-		case "iam_http_request_method", "iam_request_url", "iam_request_body", "iam_request_headers":
-			continue
-		default:
-			requestedValidations[key] = value
-		}
-	}
-
-	inputForAccessValidation := map[string]interface{}{
-		"requested": requestedValidations,
-		"sts": map[string]interface{}{
-			"arn":        upstreamResponse.Auth.InternalData["canonical_arn"],
-			"account_id": upstreamResponse.Auth.InternalData["account_id"],
-			"user_id":    upstreamResponse.Auth.InternalData["client_user_id"],
-		},
-	}
-
-	return inputForAccessValidation
 }
