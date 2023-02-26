@@ -67,7 +67,7 @@ func NewAccessValidatorFromFile(filePath string) *AccessValidatior {
 	log.Infof("Load rego policy from file: %s", filePath)
 
 	onlyFirstLevel := func(abspath string, info fs.FileInfo, depth int) bool {
-		return depth != 0
+		return depth > 1 // return true to skip the path
 	}
 
 	return NewAccessValidatorInternal(rego.Load([]string{filePath}, onlyFirstLevel))

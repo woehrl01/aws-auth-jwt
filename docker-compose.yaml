@@ -13,3 +13,4 @@ services:
       - OPA_POLICY_FOLDER=/policy/
     volumes:
       - ./test_policies:/policy
+      - ./test_policies:/policy/subdir
