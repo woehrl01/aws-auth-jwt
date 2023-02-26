@@ -111,13 +111,12 @@ func TestAccessValidatior_HasAccess(t *testing.T) {
 				rego.Query("allow = data.test.allow; claims = data.test.claims"),
 				rego.Module("test.rego", "package test\n"+tc.rule+"\n"),
 			).PrepareForEval(context.TODO())
-			// Create a new AccessValidatior instance
+
 			v := &AccessValidatior{
 				context: context.Background(),
 				rego:    &rule,
 			}
 
-			// Test with valid input
 			requestData := tc.requestData
 			upstreamResponse := &logical.Response{
 				Auth: &logical.Auth{

@@ -11,8 +11,6 @@ import (
 )
 
 func TestLoginHandler_ServeHTTP(t *testing.T) {
-	// Create a new LoginHandler instance
-
 	private, public, _ := getPrivateKeysGenerated()
 	keys, _ := getKeyMaterialFromKeys(private, public)
 
