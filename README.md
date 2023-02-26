@@ -63,7 +63,7 @@ The input variable is a JSON object that contains the following fields:
     "sts":{
         "arn":        "arn:aws:iam::123456789012:role/admin",
         "account_id": "123456789012",
-        "user_id": "AROAW6U6EEXAMPLE:admin"
+        "user_id":     "AROAW6U6EEXAMPLE:admin"
     }
 }
 ```
@@ -87,9 +87,11 @@ import future.keywords.if
 default allow := false
 default claims := {}
 
+allowed_accounts = {"123456789012"} 
+
 allow if {
     # Only allow IAM roles from the account 123456789012
-    input.sts.account_id = ["123456789012"][_]
+    allowed_accounts[input.sts.account_id]
 }
 
 claims[name] if {
@@ -162,7 +164,7 @@ import (
 
 func main() {
 	config := vault.DefaultConfig()
-    config.Address = "http://your-aws-auth-jwt-server"
+        config.Address = "http://your-aws-auth-jwt-server"
 	client, _ := vault.NewClient(config)
 	awsAuth, _ := auth.NewAWSAuth()
 	authInfo, err := awsAuth.Login(context.TODO(), client)
@@ -170,7 +172,7 @@ func main() {
 		fmt.Println(err)
 		return
 	}
-    fmt.Printf("Token: %s", authInfo.Auth.ClientToken)
+        fmt.Printf("Token: %s", authInfo.Auth.ClientToken)
 }
 ```
 
