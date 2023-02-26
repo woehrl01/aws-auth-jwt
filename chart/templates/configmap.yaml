@@ -6,3 +6,9 @@ metadata:
 data:
   policy.rego: |
     {{- .Values.opa.policyInline | nindent 4 }}
+  {{- if .Values.opa.additionalFiles }}
+  {{- range $key, $value := .Values.opa.additionalFiles }}
+  {{ $key }}: |
+    {{- $value | nindent 4 }}
+  {{- end }}
+  {{- end }}

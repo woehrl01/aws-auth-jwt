@@ -96,6 +96,8 @@ opa:
     default allow := true
     default claims := {}
 
+  additionalFiles: {}
+
 logLevel: info
 
 # name of the secret containing the certificate files, will be mounted as a volume at /certs

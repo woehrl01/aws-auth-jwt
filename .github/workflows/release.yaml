@@ -25,8 +25,12 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and Tag Docker Image
-        run: docker build -t ghcr.io/${{ github.repository }}/aws-auth-jwt:${{  github.ref_name }} .
+      - name: Build and push
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/${{ github.repository }}/aws-auth-jwt:${{ github.ref_name }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-      - name: Push Docker Image
-        run: docker push ghcr.io/${{ github.repository }}/aws-auth-jwt:${{  github.ref_name }}

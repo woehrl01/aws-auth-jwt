@@ -83,8 +83,8 @@ func (v *AccessValidatior) HasAccess(requestData map[string]interface{}, upstrea
 	defer measureTime(policyEvaluationDuration)
 
 	input := buildValidationInput(requestData, upstreamResponse)
-
 	results, err := v.rego.Eval(v.context, rego.EvalInput(input))
+
 	if err != nil || len(results) == 0 {
 		log.Warnf("Failed to evaluate policy: %v", err)
 		return Deny()
@@ -104,18 +104,18 @@ func (v *AccessValidatior) HasAccess(requestData map[string]interface{}, upstrea
 }
 
 func buildValidationInput(requestData map[string]interface{}, upstreamResponse *logical.Response) map[string]interface{} {
-	requestedValidations := map[string]interface{}{}
+	inputRequested := map[string]interface{}{}
 	for key, value := range requestData {
 		switch key {
 		case "iam_http_request_method", "iam_request_url", "iam_request_body", "iam_request_headers":
 			continue
 		default:
-			requestedValidations[key] = value
+			inputRequested[key] = value
 		}
 	}
 
-	inputForAccessValidation := map[string]interface{}{
-		"requested": requestedValidations,
+	input := map[string]interface{}{
+		"requested": inputRequested,
 		"sts": map[string]interface{}{
 			"arn":        upstreamResponse.Auth.InternalData["canonical_arn"],
 			"account_id": upstreamResponse.Auth.InternalData["account_id"],
@@ -123,5 +123,5 @@ func buildValidationInput(requestData map[string]interface{}, upstreamResponse *
 		},
 	}
 
-	return inputForAccessValidation
+	return input
 }

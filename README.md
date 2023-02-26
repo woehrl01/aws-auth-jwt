@@ -58,7 +58,8 @@ The input variable is a JSON object that contains the following fields:
 ```json
 {
     "requested": {
-        "role": "awesome-role"
+        "role": "awesome-role",
+        "someclaim": "ABC"
     },
     "sts":{
         "arn":        "arn:aws:iam::123456789012:role/admin",
@@ -87,11 +88,9 @@ import future.keywords.if
 default allow := false
 default claims := {}
 
-allowed_accounts = {"123456789012"} 
-
 allow if {
-    # Only allow IAM roles from the account 123456789012
-    allowed_accounts[input.sts.account_id]
+    # Only allow IAM roles from the AWS account 123456789012
+    {"123456789012"}[input.sts.account_id]
 }
 
 claims[name] if {
@@ -109,6 +108,12 @@ claims[name] = val {
     input.requested.role == "awesome-role"
     name := "customerid"
     val := 1234
+}
+
+claims[name] = val {
+    # Add a custom claim from request
+    name := "someclaim"
+    val := input.requested.someclaim
 }
 ```
 
@@ -155,23 +160,23 @@ For other languages, [see the algorithm](https://github.com/woehrl01/aws-auth-jw
 package main
 
 import (
-	"context"
-	"fmt"
+    "context"
+    "fmt"
 
-	vault "github.com/hashicorp/vault/api"
-	auth "github.com/hashicorp/vault/api/auth/aws"
+    vault "github.com/hashicorp/vault/api"
+    auth "github.com/hashicorp/vault/api/auth/aws"
 )
 
 func main() {
-	config := vault.DefaultConfig()
+    config := vault.DefaultConfig()
         config.Address = "http://your-aws-auth-jwt-server"
-	client, _ := vault.NewClient(config)
-	awsAuth, _ := auth.NewAWSAuth()
-	authInfo, err := awsAuth.Login(context.TODO(), client)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
+    client, _ := vault.NewClient(config)
+    awsAuth, _ := auth.NewAWSAuth()
+    authInfo, err := awsAuth.Login(context.TODO(), client)
+    if err != nil {
+        fmt.Println(err)
+        return
+    }
         fmt.Printf("Token: %s", authInfo.Auth.ClientToken)
 }
 ```
