@@ -126,26 +126,27 @@ The following example shows how to use cert-manager to automatically generate a 
 apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
-  name: jwt-issuer
+    name: jwt-issuer
 spec:
-    ca:
-        secretName: jwt-issuer
+    selfSigned: {}
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: jwt-certificate
+    name: jwt-certificate
 spec:
-    secretName: jwt-certificate
-    commonName: jwt
-    dnsNames:
-        - jwt
+    commonName: AWS AUTH JWT
     issuerRef:
-        name: jwt-issuer
+        group: cert-manager.io
         kind: Issuer
-    keyAlgorithm: rsa
-    keyEncoding: pkcs1
-    keySize: 2048
+        name: jwt-issuer
+    privateKey:
+        algorithm: RSA
+        encoding: PKCS1
+        size: 4096
+    duration: 8760h
+    renewBefore: 168h
+    secretName: issuer-certificate
     usages:
         - signing
 ```
@@ -169,7 +170,7 @@ import (
 
 func main() {
     config := vault.DefaultConfig()
-        config.Address = "http://your-aws-auth-jwt-server"
+    config.Address = "http://your-aws-auth-jwt-server"
     client, _ := vault.NewClient(config)
     awsAuth, _ := auth.NewAWSAuth()
     authInfo, err := awsAuth.Login(context.TODO(), client)
@@ -177,7 +178,7 @@ func main() {
         fmt.Println(err)
         return
     }
-        fmt.Printf("Token: %s", authInfo.Auth.ClientToken)
+    fmt.Printf("Token: %s", authInfo.Auth.ClientToken)
 }
 ```
 
