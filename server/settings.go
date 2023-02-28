@@ -2,30 +2,30 @@ package main
 
 import (
 	"os"
-	"strconv"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 )
 
 type Settings struct {
-	logLevel             string
-	policyFolder         string
-	privateKeyFile       string
-	publicKeyFile        string
-	issuer               string
-	tokenExpirationHours int
+	logLevel                string
+	policyFolder            string
+	privateKeyFile          string
+	publicKeyFile           string
+	issuer                  string
+	tokenExpirationDuration time.Duration
 }
 
 var settings Settings
 
 func initSettings() {
 	settings = Settings{
-		logLevel:             "info",
-		policyFolder:         "",
-		privateKeyFile:       "",
-		publicKeyFile:        "",
-		issuer:               "aws-auth-jwt",
-		tokenExpirationHours: 1,
+		logLevel:                "info",
+		policyFolder:            "",
+		privateKeyFile:          "",
+		publicKeyFile:           "",
+		issuer:                  "aws-auth-jwt",
+		tokenExpirationDuration: 1 * time.Hour,
 	}
 
 	if os.Getenv("LOG_LEVEL") != "" {
@@ -52,9 +52,12 @@ func initSettings() {
 		settings.issuer = os.Getenv("ISSUER")
 	}
 
-	if os.Getenv("TOKEN_EXPIRATION_HOURS") != "" {
-		settings.tokenExpirationHours, _ = strconv.Atoi(os.Getenv("TOKEN_EXPIRATION_HOURS"))
+	if os.Getenv("TOKEN_EXPIRATION_DURATION") != "" {
+		settings.tokenExpirationDuration, _ = time.ParseDuration(os.Getenv("TOKEN_EXPIRATION_DURATION"))
+	} else if os.Getenv("TOKEN_EXPIRATION_HOURS") != "" {
+		settings.tokenExpirationDuration, _ = time.ParseDuration(os.Getenv("TOKEN_EXPIRATION_HOURS") + "h")
 	}
+
 }
 
 func (s *Settings) hasCustomPolicy() bool {

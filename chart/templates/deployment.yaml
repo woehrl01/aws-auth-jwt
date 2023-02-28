@@ -67,6 +67,10 @@ spec:
             - name: TOKEN_EXPIRATION_HOURS
               value: {{ . | quote }}
           {{- end }}
+          {{- with .Values.jwt.tokenExpirationDuration }}
+            - name: TOKEN_EXPIRATION_DURATION
+              value: {{ . | quote }}
+          {{- end }}
           {{- if .Values.opa.policyInline }}
             - name: OPA_POLICY_FOLDER
               value: /policy/

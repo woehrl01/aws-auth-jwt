@@ -87,7 +87,7 @@ jwt:
   # path to the public key file. If empty, the key pair is generated
   publicKeyFile: ""
   privateKeyFile: ""
-  tokenExpirationHours: 1
+  tokenExpirationDuration: 1h
 
 opa:
   # content of the policy file, will be mounted as a volume at /policy/policy.rego

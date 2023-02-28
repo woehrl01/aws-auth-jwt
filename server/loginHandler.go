@@ -117,7 +117,7 @@ func handleSuccessfulLogin(upstreamResponse *UpstreamResponseSuccess, w http.Res
 		"display_name": upstreamResponse.DisplayName,
 		"kid":          keyMaterial.keyID,
 		"iat":          time.Now().Unix(),
-		"exp":          time.Now().Add(time.Hour * time.Duration(settings.tokenExpirationHours)).Unix(),
+		"exp":          time.Now().Add(settings.tokenExpirationDuration).Unix(),
 		"nbf":          time.Now().Unix(),
 	}
 
