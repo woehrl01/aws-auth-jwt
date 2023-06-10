@@ -6,10 +6,10 @@ require (
 	github.com/etherlabsio/healthcheck/v2 v2.0.0
 	github.com/go-openapi/runtime v0.19.24
 	github.com/golang-jwt/jwt/v5 v5.0.0-rc.1
-	github.com/hashicorp/vault v1.12.5
+	github.com/hashicorp/vault v1.12.7
 	github.com/hashicorp/vault/api v1.9.0
 	github.com/hashicorp/vault/api/auth/aws v0.4.0
-	github.com/hashicorp/vault/sdk v0.6.1-0.20230302210543-38f40f637f4f
+	github.com/hashicorp/vault/sdk v0.6.1-0.20230427140652-b4b396ffc14f
 	github.com/open-policy-agent/opa v0.49.1
 	github.com/prometheus/client_golang v1.14.0
 	github.com/sirupsen/logrus v1.9.0
@@ -75,10 +75,10 @@ require (
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/yashtewari/glob-intersection v0.1.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
-	golang.org/x/crypto v0.6.0 // indirect
-	golang.org/x/net v0.7.0 // indirect
-	golang.org/x/sys v0.5.0 // indirect
-	golang.org/x/text v0.7.0 // indirect
+	golang.org/x/crypto v0.8.0 // indirect
+	golang.org/x/net v0.9.0 // indirect
+	golang.org/x/sys v0.7.0 // indirect
+	golang.org/x/text v0.9.0 // indirect
 	golang.org/x/time v0.0.0-20220411224347-583f2d630306 // indirect
 	google.golang.org/api v0.102.0 // indirect
 	google.golang.org/genproto v0.0.0-20221118155620-16455021b5e6 // indirect
