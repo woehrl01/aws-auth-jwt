@@ -70,6 +70,8 @@ func (h *loginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log.Infof("Request data: %v", requestData)
+
 	upstreamResponse := h.upstream.executeUpstreamLogin(r.Context(), requestData)
 
 	// In case that the login was successful to AWS STS we need to check if the user has access to receive a JWT token
@@ -132,6 +134,8 @@ func handleSuccessfulLogin(upstreamResponse *UpstreamResponseSuccess, w http.Res
 
 	// Create the JWT token with the claims
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, jwtClaims)
+
+	token.Header["kid"] = keyMaterial.keyID
 
 	signedToken, _ := token.SignedString(keyMaterial.key)
 
