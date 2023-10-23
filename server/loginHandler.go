@@ -70,7 +70,7 @@ func (h *loginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Infof("Request data: %v", requestData)
+	log.Debugf("Request data: %v", requestData)
 
 	upstreamResponse := h.upstream.executeUpstreamLogin(r.Context(), requestData)
 
@@ -90,12 +90,12 @@ func (h *loginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func handleFailedLogin(upstreamResponse *UpstreamResponseError, w http.ResponseWriter) {
 	failedLoginsTotal.Inc()
-	log.Info("Login failed")
+	log.Debug("Login failed")
 
 	w.WriteHeader(http.StatusUnauthorized)
 
 	if upstreamResponse != nil && upstreamResponse.ErrorMessage != "" {
-		log.Infof("Error: %s", upstreamResponse.ErrorMessage)
+		log.Errorf("Error: %s", upstreamResponse.ErrorMessage)
 	}
 }
 
@@ -107,7 +107,7 @@ func handleSuccessfulLogin(upstreamResponse *UpstreamResponseSuccess, w http.Res
 		audience = requestData["role"].(string)
 	}
 	successfulLoginsTotal.WithLabelValues(audience).Inc()
-	log.Info("Login successful")
+	log.Debug("Login successful")
 
 	jwtClaims := jwt.MapClaims{
 		"sub":          upstreamResponse.RoleArn,
