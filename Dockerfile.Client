@@ -1,0 +1,20 @@
+# Build stage
+FROM golang:alpine AS build
+WORKDIR /app
+
+# download dependencies
+COPY go.mod go.sum ./
+RUN go mod download
+
+# build
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -a -ldflags="-w -s" -o aws_auth_jwt_client ./client
+
+# Download ca-certificates
+RUN apk add -U --no-cache ca-certificates
+
+# Final stage
+FROM scratch
+COPY --from=build /app/aws_auth_jwt_client /aws_auth_jwt_client
+COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+CMD ["/aws_auth_jwt_client"]

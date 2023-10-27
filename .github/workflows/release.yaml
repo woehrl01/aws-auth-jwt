@@ -28,12 +28,22 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push
+      - name: Build and push server
         uses: docker/build-push-action@v4
         with:
           context: .
           push: true
           tags: ghcr.io/${{ github.repository }}/aws-auth-jwt:${{ github.ref_name }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push client
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Dockerfile.Client
+          push: true
+          tags: ghcr.io/${{ github.repository }}/aws-auth-jwt-client:${{ github.ref_name }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

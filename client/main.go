@@ -2,12 +2,19 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
+	"log"
 	"os"
+	"strings"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/go-secure-stdlib/awsutil"
 	vault "github.com/hashicorp/vault/api"
-	auth "github.com/hashicorp/vault/api/auth/aws"
+	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
 )
 
 // see: https://github.com/hashicorp/go-secure-stdlib/blob/main/awsutil/generate_credentials.go#L256-L301
@@ -31,34 +38,131 @@ import (
 //   - The field "role" is used as the audience claim in the JWT token.
 //
 // - Send the request to the vault server to Login: /v1/auth/aws/login
-func doLogin() {
-	config := vault.DefaultConfig()
+func doLogin(ctx context.Context, config *Config) (string, error) {
+	vaultConfig := vault.DefaultConfig()
+	vaultConfig.Address = config.Addr
+	client, _ := vault.NewClient(vaultConfig)
 
-	if os.Getenv("ADDR") != "" {
-		config.Address = os.Getenv("ADDR")
-	} else {
-		config.Address = "http://localhost:8081"
-	}
-
-	client, _ := vault.NewClient(config)
-	awsAuth, _ := auth.NewAWSAuth(
-		auth.WithRole("generic"),
-	)
-	authInfo, err := awsAuth.Login(context.Background(), client)
+	loginData, err := awsLoginPrep(ctx)
 	if err != nil {
-		fmt.Println(err)
-		return
+		return "", err
 	}
 
-	b, err := json.MarshalIndent(authInfo, "", "  ")
+	loginData["role"] = config.Role
+
+	for _, claim := range config.Claims {
+		splited := strings.Split(claim, "=")
+		if len(splited) != 2 {
+			return "", fmt.Errorf("invalid claim: %s", claim)
+		}
+		loginData[splited[0]] = splited[1]
+	}
+
+	authInfo, err := client.Logical().WriteWithContext(context.Background(), "auth/aws/login", loginData)
 	if err != nil {
-		fmt.Println(err)
+		return "", err
 	}
 
-	fmt.Println()
-	fmt.Printf("%s", b)
+	
+	return authInfo.Auth.ClientToken, nil
+}
+
+type Config struct {
+	Addr string `mapstructure:"addr"`
+	Role string `mapstructure:"role"`
+	Claims []string `mapstructure:"claims"`
 }
 
 func main() {
-	doLogin()
+	pflag.String("addr", "http://localhost:8081", "Vault server address")
+	pflag.String("role", "generic", "Vault role")
+	pflag.StringSlice("claims", []string{}, "JWT claims")
+	pflag.Parse()
+	viper.BindPFlags(pflag.CommandLine)
+
+	config := &Config{}
+	if err := viper.Unmarshal(&config); err != nil {
+		log.Fatal(err)
+	}
+
+	token, err := doLogin(context.Background(), config)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println(token)
+}
+
+func awsLoginPrep(ctx context.Context) (map[string]interface{}, error) {
+	logger := hclog.Default()
+
+	const region = "us-east-1"
+	creds, err := awsCredentialsFromSession(region)
+	if err != nil {
+		creds, err = awsCredentilasFromEnv(logger)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return awsutil.GenerateLoginData(creds, "", region, logger)
+}
+
+func awsCredentialsFromSession(region string) (*credentials.Credentials, error) {
+	session, err := session.NewSessionWithOptions(session.Options{
+		SharedConfigState: session.SharedConfigEnable,
+		Config: aws.Config{
+			Region: aws.String(region),
+		},
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	creds := session.Config.Credentials
+	if creds == nil {
+		return nil, fmt.Errorf("could not get credentials from session")
+	}
+
+	_, err = creds.Get()
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve credentials from credential chain: %w", err)
+	}
+
+	return creds, nil
+}
+
+func awsCredentilasFromEnv(logger hclog.Logger) (*credentials.Credentials, error) {
+	credsConfig := awsutil.CredentialsConfig{
+		AccessKey:    os.Getenv("AWS_ACCESS_KEY_ID"),
+		SecretKey:    os.Getenv("AWS_SECRET_ACCESS_KEY"),
+		SessionToken: os.Getenv("AWS_SESSION_TOKEN"),
+		Logger:       logger,
+	}
+
+	// the env vars above will take precedence if they are set, as
+	// they will be added to the ChainProvider stack first
+	var hasCredsFile bool
+	credsFilePath := os.Getenv("AWS_SHARED_CREDENTIALS_FILE")
+	if credsFilePath != "" {
+		hasCredsFile = true
+		credsConfig.Filename = credsFilePath
+	}
+
+	creds, err := credsConfig.GenerateCredentialChain(awsutil.WithSharedCredentials(hasCredsFile))
+	if err != nil {
+		return nil, err
+	}
+
+	if creds == nil {
+		return nil, fmt.Errorf("could not compile valid credential providers from static config, environment, shared, or instance metadata")
+	}
+
+	_, err = creds.Get()
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve credentials from credential chain: %w", err)
+	}
+
+	return creds, nil
+
 }
