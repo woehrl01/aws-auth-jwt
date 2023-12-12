@@ -9,7 +9,7 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.0.0-rc.1
 	github.com/hashicorp/go-hclog v1.5.0
 	github.com/hashicorp/go-secure-stdlib/awsutil v0.1.6
-	github.com/hashicorp/vault v1.13.10
+	github.com/hashicorp/vault v1.13.12
 	github.com/hashicorp/vault/api v1.9.2
 	github.com/hashicorp/vault/sdk v0.10.2
 	github.com/open-policy-agent/opa v0.49.1
@@ -101,12 +101,12 @@ require (
 	github.com/yashtewari/glob-intersection v0.1.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
-	golang.org/x/crypto v0.14.0 // indirect
+	golang.org/x/crypto v0.15.0 // indirect
 	golang.org/x/exp v0.0.0-20230905200255-921286631fa9 // indirect
 	golang.org/x/mod v0.12.0 // indirect
 	golang.org/x/net v0.17.0 // indirect
-	golang.org/x/sys v0.13.0 // indirect
-	golang.org/x/text v0.13.0 // indirect
+	golang.org/x/sys v0.14.0 // indirect
+	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	golang.org/x/tools v0.13.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230920204549-e6e6cdab5c13 // indirect
