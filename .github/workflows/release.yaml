@@ -50,14 +50,15 @@ jobs:
 
       - name: Extract file from client
         run: |
+          set -e
           container_id=$(docker create ghcr.io/${{ github.repository }}/aws-auth-jwt-client:${{ github.ref_name }})
-          docker cp $container_id:/aws_auth_jwt_client ./client
+          docker cp $container_id:/aws_auth_jwt_client ./client-x86_64
           docker rm $container_id
 
       - name: Create Release
         uses: ncipollo/release-action@v1
         with:
-          artifacts: "client"
+          artifacts: "client-x86_64"
           generateReleaseNotes: true
           allowUpdates: true
 
