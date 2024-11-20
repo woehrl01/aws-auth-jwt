@@ -47,3 +47,33 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Extract file from client
+        run: |
+          container_id=$(docker create ghcr.io/${{ github.repository }}/aws-auth-jwt-client:${{ github.ref_name }})
+          docker cp $container_id:/aws_auth_jwt_client ./client
+          docker rm $container_id
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name }}
+          release_name: Release ${{ github.ref_name }}
+          body: |
+            Changes in this Release
+          draft: false
+          prerelease: false
+
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./client
+          asset_name: client
+          asset_content_type: application/zip
+      
+
