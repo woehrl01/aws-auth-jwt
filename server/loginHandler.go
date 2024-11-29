@@ -78,19 +78,22 @@ func (h *loginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// We do this by calling the HasAccess method of the AccessValidator. The current implementation of the
 	// AccessValidator is using the Open Policy Agent (OPA) to validate the access.
 	if !upstreamResponse.LoginSucceeded {
-		handleFailedLogin(upstreamResponse.Error, w)
+		handleFailedLogin(r, upstreamResponse.Error, w)
 	} else if validationResult := h.validator.HasAccess(requestData, upstreamResponse.Success); validationResult.Allowed {
-		handleSuccessfulLogin(upstreamResponse.Success, w, requestData, h.keyMaterial, validationResult.AdditionalClaims)
+		handleSuccessfulLogin(r, upstreamResponse.Success, w, requestData, h.keyMaterial, validationResult.AdditionalClaims)
 	} else {
-		handleFailedLogin(&UpstreamResponseError{
+		handleFailedLogin(r, &UpstreamResponseError{
 			ErrorMessage: "User is not allowed to receive a JWT token based on policy evaluation",
 		}, w)
 	}
 }
 
-func handleFailedLogin(upstreamResponse *UpstreamResponseError, w http.ResponseWriter) {
+func handleFailedLogin(r *http.Request, upstreamResponse *UpstreamResponseError, w http.ResponseWriter) {
 	failedLoginsTotal.Inc()
-	log.Debug("Login failed")
+
+	log.WithFields(log.Fields{
+		"ip": r.RemoteAddr,
+	}).Error("Login failed")
 
 	w.WriteHeader(http.StatusUnauthorized)
 
@@ -99,7 +102,7 @@ func handleFailedLogin(upstreamResponse *UpstreamResponseError, w http.ResponseW
 	}
 }
 
-func handleSuccessfulLogin(upstreamResponse *UpstreamResponseSuccess, w http.ResponseWriter, requestData map[string]interface{}, keyMaterial *keyMaterialPrivate, claims map[string]interface{}) {
+func handleSuccessfulLogin(r *http.Request, upstreamResponse *UpstreamResponseSuccess, w http.ResponseWriter, requestData map[string]interface{}, keyMaterial *keyMaterialPrivate, claims map[string]interface{}) {
 	audience := "generic"
 	if requestData["audience"] != nil {
 		audience = requestData["audience"].(string)
@@ -107,7 +110,11 @@ func handleSuccessfulLogin(upstreamResponse *UpstreamResponseSuccess, w http.Res
 		audience = requestData["role"].(string)
 	}
 	successfulLoginsTotal.WithLabelValues(audience).Inc()
-	log.Debug("Login successful")
+
+	log.WithFields(log.Fields{
+		"sub":          upstreamResponse.RoleArn,
+		"ip":           r.RemoteAddr,
+	}).Info("Login successful")
 
 	jwtClaims := jwt.MapClaims{
 		"sub":          upstreamResponse.RoleArn,
