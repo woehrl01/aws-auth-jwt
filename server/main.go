@@ -32,12 +32,12 @@ var (
 	policyEvaluationDuration = promauto.NewHistogram(prometheus.HistogramOpts{
 		Name:    "aws_auth_jwt_policy_evaluation_duration_seconds",
 		Help:    "The duration of policy evaluation",
-		Buckets: prometheus.LinearBuckets(0.1, 0.1, 10),
+		Buckets: []float64{0.0, 0.1, 1.0, 5.0},
 	})
 	stsBackendDuration = promauto.NewHistogram(prometheus.HistogramOpts{
 		Name:    "aws_auth_jwt_sts_backend_duration_seconds",
 		Help:    "The duration of the STS backend call",
-		Buckets: prometheus.LinearBuckets(0.1, 0.1, 10),
+		Buckets: []float64{0.0, 0.1, 1.0, 5.0},
 	})
 )
 
@@ -64,7 +64,9 @@ func startServer() {
 	http.Handle("/healthz", healthcheck.Handler(healthcheck.WithTimeout(5*time.Second)))
 
 	log.Info("Starting server on port 8081")
+	
 	http.ListenAndServe(":8081", nil)
+
 }
 
 func initLogging() {
